@@ -14,7 +14,18 @@ npm install
 npm start                 # or: npm run dev (watch mode)
 ```
 
-### Docker
+### Docker Compose
+
+```bash
+cp .env.example .env              # fill it in first
+docker compose up -d --build      # build and start in the background
+docker compose logs -f            # follow logs
+docker compose down               # stop and remove
+```
+
+The port comes from `PORT` in `.env` (default `3000`). The container restarts automatically unless you stop it.
+
+Without Compose:
 
 ```bash
 docker build -t noperi-ts .
