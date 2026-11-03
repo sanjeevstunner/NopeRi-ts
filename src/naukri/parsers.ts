@@ -1,0 +1,103 @@
+import { publicEncrypt, constants, randomInt } from 'node:crypto';
+import { MNJ_FALLBACK_VERSIONS, NKPARAM_PUBLIC_KEY, STATIC_JS_BASE } from './constants.ts';
+import type { ApplicationHistory, Job } from './types.ts';
+
+// Pure helpers: no I/O, so they are unit-tested directly.
+
+/** Signed `nkparam` header required by the job search/details APIs. */
+export function generateNkparam(pageType = 'srp', now = Date.now()): string {
+  const plaintext = Buffer.from(`v0|${now}|121_${pageType}`);
+  return publicEncrypt({ key: NKPARAM_PUBLIC_KEY, padding: constants.RSA_PKCS1_PADDING }, plaintext).toString('base64');
+}
+
+/** Search session id Naukri expects: UTC yyyyMMddHHmmss + 7 zeros. */
+export function newSid(now = new Date()): string {
+  return now.toISOString().replace(/\D/g, '').slice(0, 14) + '0000000';
+}
+
+/** `seoKey` param for search, e.g. "node-dot-js-developer-jobs-in-hyderabad-1". */
+export function buildSeoKey(keyword: string, location: string, page: number): string {
+  const kw = keyword
+    .trim()
+    .toLowerCase()
+    .replaceAll('.', '-dot-')
+    .replaceAll(' ', '-')
+    .replaceAll('+', '-')
+    .replace(/^-+|-+$/g, '');
+  const loc = location.trim().toLowerCase().replaceAll(' ', '-');
+  return loc ? `${kw}-jobs-in-${loc}-${page}` : `${kw}-jobs-${page}`;
+}
+
+export function randomFileKey(length: number): string {
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return Array.from({ length }, () => chars[randomInt(chars.length)]).join('');
+}
+
+export function parseJob(raw: any): Job {
+  // Search results carry display-ready labels in `placeholders`; salaryDetail is a structured object.
+  const label = (type: string): string | undefined => raw.placeholders?.find((p: any) => p?.type === type)?.label;
+  const text = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+  const jobId = String(raw.jobId ?? raw.id ?? '');
+  const jdUrl = text(raw.jdURL);
+  return {
+    jobId,
+    title: raw.title || raw.jobTitle || 'N/A',
+    company: raw.companyName || raw.company || 'N/A',
+    location: label('location') ?? 'N/A',
+    experience: label('experience') ?? text(raw.experienceText) ?? text(raw.experience) ?? 'N/A',
+    salary: label('salary') ?? text(raw.salary) ?? 'Not disclosed',
+    postedDate: raw.footerPlaceholderLabel || raw.postedDate || 'N/A',
+    applyLink: jdUrl
+      ? new URL(jdUrl, 'https://www.naukri.com').href
+      : `https://www.naukri.com/job-listings-${jobId}`,
+    description: raw.jobDescription || '',
+    tags: raw.tagsAndSkills ? String(raw.tagsAndSkills).split(',').map((t) => t.trim()) : [],
+  };
+}
+
+export function parseHistory(raw: any): ApplicationHistory[] {
+  return (raw?.applyDetails ?? []).map((item: any) => ({
+    jobId: item.jobId,
+    jobTitle: item.jobTitle,
+    company: item.company,
+    location: item.location,
+    applyType: item.applyType,
+    isOpen: item.isOpen === 'true' || item.isOpen === true,
+    arsScore: item.arsScore ?? 0,
+    starRating: item.starRating ?? '0',
+    jobType: item.jobType ?? '',
+    statuses: (item.status ?? []).map((s: any) => ({
+      statusId: s.statusId,
+      statusValue: s.statusValue,
+      dateTime: s.dateTime,
+    })),
+    companyRating: item.companyRating?.AggregateRating ? Number(item.companyRating.AggregateRating) : null,
+    logoPath: item.logoPath ?? null,
+  }));
+}
+
+// --- formKey discovery -------------------------------------------------------
+// The resume uploader's formKey lives in the mnj_vNNN.min.js bundle. The profile page
+// only links app_vNNN.min.js, which carries a version map like `mnj:"_v323"`.
+
+const absolute = (url: string) => (url.startsWith('//') ? `https:${url}` : url);
+
+export function scriptUrls(html: string): string[] {
+  return [...html.matchAll(/<script[^>]+src="([^"]*\.js[^"]*)"/g)].map((m) => absolute(m[1]));
+}
+
+export function appJsUrl(html: string): string | undefined {
+  const m = html.match(/src="((?:https?:)?\/\/static\.naukimg\.com\/s\/5\/105\/j\/app_v\d+\.min\.js)"/);
+  return m ? absolute(m[1]) : undefined;
+}
+
+export function mnjVersion(appJs: string): string | undefined {
+  return appJs.match(/\bmnj\s*:\s*"(_v\d+)"/)?.[1];
+}
+
+export const mnjUrl = (version: string) => `${STATIC_JS_BASE}mnj${version}.min.js`;
+export const fallbackMnjUrls = () => MNJ_FALLBACK_VERSIONS.map(mnjUrl);
+
+export function extractFormKey(js: string): string | undefined {
+  return js.match(/key:"initUploader".*?d\s*=\s*"([A-Za-z0-9]+)"/s)?.[1] ?? js.match(/d\s*=\s*"([A-Za-z0-9]{10,})"/)?.[1];
+}
