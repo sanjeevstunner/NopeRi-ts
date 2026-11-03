@@ -2,7 +2,7 @@ import { Session, type Response } from 'httpcloak';
 import { NaukriAuthError, NaukriUpstreamError } from './errors.ts';
 
 /** The slice of an HTTP session the Naukri services depend on. Stub this in tests. */
-export type Http = Pick<Session, 'get' | 'post' | 'getCookie' | 'close'>;
+export type Http = Pick<Session, 'get' | 'post' | 'getCookie' | 'setCookie' | 'close'>;
 
 /**
  * Chrome-fingerprinted session (TLS + HTTP/2), which Naukri requires; plain fetch gets flagged.

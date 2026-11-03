@@ -76,6 +76,7 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | GET | `/health` | | Public liveness check |
 | GET | `/api/auth/status` | | `{ loggedIn, loginTime }` |
 | POST | `/api/auth/login` | | Logs in again with the `.env` credentials. Other routes log in automatically on first use. |
+| POST | `/api/auth/token` | `{ token }` | Use when login/OTP demand a CAPTCHA: paste the `nauk_at` cookie from a logged-in browser |
 | POST | `/api/auth/otp/send` | `{ username?, isMobile? }` | Use when Naukri demands OTP/MFA |
 | POST | `/api/auth/otp/verify` | `{ otp, username?, isMobile? }` | Completes the OTP login |
 | GET | `/api/profile/id` | | |

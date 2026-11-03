@@ -38,6 +38,15 @@ export class NaukriAuth {
     this.#setToken(this.#http.getCookie(TOKEN_COOKIE)?.value);
   }
 
+  /**
+   * Adopts a `nauk_at` token copied from a logged-in browser. Use when Naukri demands a
+   * CAPTCHA on login/OTP, which a server-side client cannot solve.
+   */
+  useToken(token: string): void {
+    this.#http.setCookie(TOKEN_COOKIE, token, { domain: '.naukri.com', path: '/', secure: true });
+    this.#setToken(token);
+  }
+
   /** Asks Naukri to send a login OTP by SMS (`isMobile`) or email. */
   async sendOtp(username = this.#creds.username, isMobile = true): Promise<unknown> {
     const res = await this.#http.post(URLS.otpSend, {
