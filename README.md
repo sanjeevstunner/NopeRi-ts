@@ -23,6 +23,29 @@ docker run -d --name noperi -p 3000:3000 --env-file .env noperi-ts
 
 > **Hosting:** Naukri ties sessions to the IP that logged in and flags most datacenter ranges (Azure, GitHub Actions, some GCP). Run it from a home server or an EC2 instance with an Elastic IP, or set `NAUKRI_PROXY` to a residential proxy. Run a single instance. Don't scale out behind a load balancer.
 
+## Setting up `API_KEY`
+
+`API_KEY` is not a Naukri key. Naukri has no public API keys, and this project doesn't need one because it logs in with your normal Naukri email and password, the way the website does.
+
+`API_KEY` is a password you make up for your own server. Callers have to send it before the server will act on your Naukri account. Without it, anyone who can reach the server could apply to jobs or change your profile.
+
+1. Generate a random key:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
+   ```
+2. Put it in `.env` with your Naukri login:
+   ```env
+   API_KEY=<paste the generated value>
+   NAUKRI_USERNAME=your_naukri_email@example.com
+   NAUKRI_PASSWORD=your_naukri_password
+   ```
+3. Send the same value on every `/api/*` call, as `x-api-key` or `Authorization: Bearer`:
+   ```bash
+   curl -H "x-api-key: <your key>" "localhost:3000/api/jobs/search?keyword=python"
+   ```
+
+Any string of 16 or more characters works, but a random one is safer. Keep it on your web app's server side and never put it in browser JavaScript, or anyone could read it.
+
 ## Configuration (`.env`)
 
 | Variable | Required | Description |
