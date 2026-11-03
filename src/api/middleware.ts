@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { HTTPCloakError } from 'httpcloak';
+import multer from 'multer';
 import { ZodError } from 'zod';
 import { NaukriError } from '../naukri/errors.ts';
 
@@ -41,6 +42,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof HTTPCloakError) {
     console.warn(`${req.method} ${req.path} → network error: ${err.message}`);
     res.status(502).json({ error: { code: 'NAUKRI_UNREACHABLE', message: 'Could not reach Naukri', detail: err.message } });
+    return;
+  }
+  if (err instanceof multer.MulterError) {
+    const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    res.status(status).json({ error: { code: 'VALIDATION_ERROR', message: err.message, field: err.field } });
     return;
   }
   // Body-parser errors (malformed JSON, payload too large) carry a safe status + message.

@@ -46,7 +46,7 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | POST | `/api/auth/otp/verify` | `{ otp, username?, isMobile? }` | Completes the OTP login |
 | GET | `/api/profile/id` | | |
 | PATCH | `/api/profile` | `{ headline?, name?, summary? }` | At least one field |
-| PUT | `/api/profile/resume?filename=cv.pdf` | raw PDF, `Content-Type: application/pdf` | Max 5 MB |
+| PUT | `/api/profile/resume` | `multipart/form-data`, PDF in field `resume` | Max 5 MB. The uploaded filename is kept (sanitised) |
 | GET | `/api/applications` | `?pageSize&days&pageNumber&mobile` | Application history |
 | GET | `/api/jobs/recommended` | | |
 | GET | `/api/jobs/search` | `?keyword` (required) `&location&page&experience&jobAge&resultsPerPage&latLong` | No login needed |
@@ -59,9 +59,11 @@ Error codes: `UNAUTHORIZED` (bad API key), `VALIDATION_ERROR` (400), `NAUKRI_AUT
 
 ```bash
 curl -H "x-api-key: $API_KEY" "localhost:3000/api/jobs/search?keyword=node.js&location=hyderabad&experience=2"
-curl -X PUT -H "x-api-key: $API_KEY" -H "content-type: application/pdf" \
-     --data-binary @resume.pdf "localhost:3000/api/profile/resume?filename=resume.pdf"
+curl -X PUT -H "x-api-key: $API_KEY" -F "resume=@resume.pdf;type=application/pdf" \
+     localhost:3000/api/profile/resume
 ```
+
+From a browser, append the file to a `FormData` under `resume` and send it with `fetch(url, { method: 'PUT', body: form })`. Don't set `Content-Type` yourself, because the browser has to add the multipart boundary. A browser app on a different origin also needs CORS, which isn't enabled yet. Calling it from your own backend avoids CORS and keeps the API key out of the browser.
 
 ## Library use
 

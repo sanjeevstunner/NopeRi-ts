@@ -52,17 +52,24 @@ test('profile update needs at least one field', async () => {
   assert.equal((await call('/api/profile', { method: 'PATCH', body: '{"headline":"Backend"}' })).status, 200);
 });
 
-test('resume upload accepts raw PDF only', async () => {
-  const pdf = Buffer.from('%PDF-1.4 fake');
-  const ok = await call('/api/profile/resume?filename=cv.pdf', {
-    method: 'PUT',
-    body: pdf,
-    headers: { 'content-type': 'application/pdf' },
-  });
-  assert.equal(ok.status, 200);
-  assert.deepEqual(calls.at(-1), [pdf.length, 'cv.pdf']);
-  const bad = await call('/api/profile/resume', { method: 'PUT', body: 'hello', headers: { 'content-type': 'text/plain' } });
-  assert.equal(bad.status, 400);
+test('resume upload takes a multipart PDF in the "resume" field', async () => {
+  // No content-type header: fetch sets the multipart boundary itself.
+  const upload = (field: string, content: Uint8Array<ArrayBuffer> | string, name: string) => {
+    const form = new FormData();
+    form.append(field, new Blob([content]), name);
+    return fetch(`${base}/api/profile/resume`, { method: 'PUT', body: form, headers: { 'x-api-key': KEY } });
+  };
+  const pdf = new TextEncoder().encode("%PDF-1.4 fake");
+
+  assert.equal((await upload('resume', pdf, '../My CV (1).pdf')).status, 200);
+  assert.deepEqual(calls.at(-1), [pdf.length, 'My CV (1).pdf']);
+  assert.equal((await upload('resume', pdf, 'cv.docx')).status, 200);
+  assert.deepEqual(calls.at(-1), [pdf.length, 'resume.pdf']);
+
+  assert.equal((await upload('resume', 'hello', 'cv.pdf')).status, 400); // not a PDF
+  assert.equal((await upload('file', pdf, 'cv.pdf')).status, 400); // wrong field
+  assert.equal((await upload('resume', new Uint8Array(5 * 1024 * 1024 + 1), 'cv.pdf')).status, 413);
+  assert.equal((await call('/api/profile/resume', { method: 'PUT', body: '{}' })).status, 400); // not multipart
 });
 
 test('Naukri errors map to typed JSON errors', async () => {
