@@ -1,6 +1,6 @@
 import type { NaukriAuth } from './auth.ts';
 import { APPLY_SOURCES, HEADERS, URLS } from './constants.ts';
-import { NaukriAuthError } from './errors.ts';
+import { NaukriAuthError, NaukriUpstreamError } from './errors.ts';
 import { compact, readJson, type Http } from './http.ts';
 import { buildSeoKey, generateNkparam, newSid, parseJob } from './parsers.ts';
 import type { ApplyParams, Job, SearchParams } from './types.ts';
@@ -76,13 +76,21 @@ export class NaukriJobs {
     const res = await this.#http.get(URLS.jobDetails(jobId), {
       headers: await this.#auth.authHeaders({
         ...HEADERS.jobApi,
-        nkparam: generateNkparam('srp'),
+        gid: 'LOCATION,INDUSTRY,EDUCATION,FAREA_ROLE',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-dest': 'empty',
+        // Job pages sign the job id itself; a "srp"-signed token gets 406 "recaptcha required".
+        nkparam: generateNkparam(jobId),
         referer: 'https://www.naukri.com/',
       }),
-      params: { microsite: 'y', src: 'jobsearchDesk', sid, xp: '1', px: '1' },
+      params: { microsite: 'y', brandedConsultantJd: 'true', amboxConsultantData: 'true', src: 'jobsearchDesk', sid },
     });
     const details = readJson(res, 'Job details');
-    return { externalApply: details?.job?.responseManager === 'companyUrl', details };
+    const job = details?.jobDetails;
+    if (!job || typeof job !== 'object') throw new NaukriUpstreamError('Job details response has no jobDetails', res.statusCode, res.text);
+    // Company-site jobs carry both URLs; Naukri-apply jobs have neither.
+    return { externalApply: Boolean(job.applyRedirectUrl || job.companyApplyUrl), details };
   }
 
   /**
