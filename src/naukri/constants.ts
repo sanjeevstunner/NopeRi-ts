@@ -11,7 +11,7 @@ export const URLS = {
   history: 'https://www.naukri.com/cloudgateway-apply/whtma-services/v0/applyapi/v5/history',
   search: 'https://www.naukri.com/jobapi/v3/search',
   recommended: 'https://www.naukri.com/jobapi/v2/search/recom-jobs',
-  jobDetails: (jobId: string) => `https://www.naukri.com/jobapi/v1/job/${encodeURIComponent(jobId)}`,
+  jobDetails: (jobId: string) => `https://www.naukri.com/jobapi/v4/job/${encodeURIComponent(jobId)}`,
   apply: 'https://www.naukri.com/cloudgateway-workflow/workflow-services/apply-workflow/v1/apply',
 } as const;
 
