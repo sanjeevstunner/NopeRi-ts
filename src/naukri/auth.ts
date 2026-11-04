@@ -1,6 +1,7 @@
 import { HEADERS, URLS } from './constants.ts';
 import { NaukriAuthError } from './errors.ts';
 import type { Http } from './http.ts';
+import { generateVid } from './vid.ts';
 
 export interface Credentials {
   username: string;
@@ -30,8 +31,10 @@ export class NaukriAuth {
   }
 
   async login(): Promise<void> {
+    // Without vid Naukri may demand a CAPTCHA; if it can't be generated, try the login anyway.
+    const vid = await generateVid().catch(() => undefined);
     const res = await this.#http.post(URLS.login, {
-      headers: HEADERS.base,
+      headers: { ...HEADERS.login, ...(vid && { vid }) },
       json: { username: this.#creds.username, password: this.#creds.password },
     });
     if (!res.ok) throw new NaukriAuthError('Login failed', res.statusCode, res.text);

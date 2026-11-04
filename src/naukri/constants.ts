@@ -23,16 +23,17 @@ type Headers = Record<string, string>;
 
 const BASE: Headers = {
   accept: 'application/json',
-  appid: '105',
+  appid: '103',
   clientid: 'd3skt0p',
   'content-type': 'application/json',
-  referer: 'https://www.naukri.com/nlogin/login',
+  referer: 'https://www.naukri.com/',
   systemid: 'jobseeker',
   'x-requested-with': 'XMLHttpRequest',
 };
 
 export const HEADERS = {
   base: BASE,
+  login: { ...BASE, appid: '105' },
   otpVerify: {
     ...BASE,
     appid: '100',
@@ -61,6 +62,14 @@ export const NKPARAM_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBALrlQ+djR0RjJwBF1xuisHmdFv334MIm
 K6LgzJhmLhN7B5yuEyaKoasgXQk3+OQglsOaBxEJ0j5PcTL3nbOvt80CAwEAAQ==
 -----END PUBLIC KEY-----`;
+
+/** BotGuard SDK parameters for the login `vid` header. */
+export const VID = {
+  appId: '105',
+  pageUrl: 'https://www.naukri.com/nlogin/login',
+  publicKey:
+    'MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBALbx2oNW1OsL+zv+GK4Ed70m4gr6sBjpzj1PCmLAYs3dQph0IS/DFWXMDN//CyC46DgSJZJZdaxT0xskFBIKNSMCAwEAAQ==',
+};
 
 export const APPLY_SOURCES = {
   recommended: { applySrc: 'drecomm_apply', logstr: (sid: string) => `--drecomm_apply-1-F-0-1--${sid}-` },
