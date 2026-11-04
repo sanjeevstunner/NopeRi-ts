@@ -74,6 +74,7 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | Method | Path | Body / query | Notes |
 |---|---|---|---|
 | GET | `/health` | | Public liveness check |
+| GET | `/docs` | | Interactive Swagger UI, public (use **Authorize** to set the API key); spec at `/openapi.json` |
 | GET | `/api/auth/status` | | `{ loggedIn, loginTime }` |
 | POST | `/api/auth/login` | | Logs in again with the `.env` credentials. Other routes log in automatically on first use. |
 | POST | `/api/auth/token` | `{ token }` | Use when login/OTP demand a CAPTCHA: paste the `nauk_at` cookie from a logged-in browser |
