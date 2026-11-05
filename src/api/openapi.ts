@@ -172,7 +172,7 @@ export const openApiSpec = {
         tags: ['Jobs'],
         summary: 'Apply to a job',
         description:
-          'If the job has a questionnaire, the response has `questionnaireRequired: true`; send the answers in `answers` and apply again.',
+          'If the job has a questionnaire, the response has `questionnaireRequired: true`; apply again with the same `sid` and the answers in `answers`, leaving out `skippable` questions. `applied: true` is Naukri\'s confirmation.',
         parameters: [jobIdParam],
         requestBody: {
           required: false,
@@ -337,6 +337,14 @@ export const openApiSpec = {
         type: 'object',
         properties: {
           externalApply: { type: 'boolean', description: 'The job applies on the company site, not Naukri.' },
+          skills: {
+            type: 'object',
+            description: 'Skills to pass as mandatorySkills/optionalSkills when applying.',
+            properties: {
+              mandatory: { type: 'array', items: { type: 'string' } },
+              optional: { type: 'array', items: { type: 'string' } },
+            },
+          },
           details: { type: 'object', additionalProperties: true, description: "Naukri's job detail payload." },
         },
       },
@@ -349,7 +357,7 @@ export const openApiSpec = {
           source: { type: 'string', enum: ['recommended', 'search'] },
           answers: {
             type: 'object',
-            description: 'Questionnaire answers keyed by questionId. Text answers are strings, option answers are arrays of option keys.',
+            description: 'Questionnaire answers keyed by questionId. Text answers are strings (max 100 characters), option answers are arrays of option labels, e.g. ["Yes"].',
             additionalProperties: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
           },
         },
@@ -357,7 +365,26 @@ export const openApiSpec = {
       ApplyResult: {
         type: 'object',
         properties: {
+          applied: { type: 'boolean', description: "Naukri confirmed the application (applyStatus 200)." },
+          message: { type: 'string', nullable: true, description: "Naukri's message, e.g. \"You have successfully applied to this job.\"" },
+          sid: { type: 'string', description: 'The sid used; send it again with the answers.' },
           questionnaireRequired: { type: 'boolean' },
+          questionnaire: {
+            type: 'array',
+            description: 'The questions to answer; empty when none. Apply again with `answers` keyed by `id`.',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                text: { type: 'string' },
+                type: { type: 'string', enum: ['text', 'choice', 'multi'] },
+                options: { type: 'object', additionalProperties: { type: 'string' }, description: 'Option key → label.' },
+                required: { type: 'boolean' },
+                skippable: { type: 'boolean', description: 'Naukri fills it from the Naukri profile; leave it out of answers.' },
+                prefill: { type: 'array', items: { type: 'string' } },
+              },
+            },
+          },
           result: { type: 'object', additionalProperties: true, description: "Naukri's apply response." },
         },
       },

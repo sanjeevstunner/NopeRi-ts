@@ -86,12 +86,12 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | GET | `/api/applications` | `?pageSize&days&pageNumber&mobile` | Application history |
 | GET | `/api/jobs/recommended` | | |
 | GET | `/api/jobs/search` | `?keyword` (required) `&location&page&experience&jobAge&resultsPerPage&latLong` | No login needed |
-| GET | `/api/jobs/:jobId` | `?sid` | `{ externalApply, details }` |
-| POST | `/api/jobs/:jobId/apply` | `{ mandatorySkills?, optionalSkills?, source?, sid?, answers? }` | Returns `{ questionnaireRequired, result }` |
+| GET | `/api/jobs/:jobId` | `?sid` | `{ externalApply, skills: { mandatory, optional }, details }` |
+| POST | `/api/jobs/:jobId/apply` | `{ mandatorySkills?, optionalSkills?, source?, sid?, answers? }` | Returns `{ applied, message, sid, questionnaireRequired, questionnaire, result }` |
 
 Error codes: `UNAUTHORIZED` (bad API key), `VALIDATION_ERROR` (400), `NAUKRI_AUTH` (401: login failed, OTP needed, or token expired), `NAUKRI_UPSTREAM` / `NAUKRI_UNREACHABLE` (502).
 
-**Questionnaires:** if `apply` returns `questionnaireRequired: true`, read the questions from `result.jobs[0].questionnaire` and call `apply` again with `answers` keyed by `questionId`. Text answers are strings. Option answers are arrays of option keys, e.g. `{ "Q1": "5", "Q2": ["opt_yes"] }`.
+**Questionnaires:** if `apply` returns `questionnaireRequired: true`, read `questionnaire` (`[{ id, text, type: 'text'|'choice'|'multi', options, required, skippable, prefill }]`) and call `apply` again with the same `sid`, the same `mandatorySkills`/`optionalSkills` (from job details' `skills`) and `answers` keyed by `id`. Leave out `skippable` questions: Naukri fills them from the Naukri profile. Text answers are strings of at most 100 characters; choice answers are arrays of option **labels**, e.g. `{ "52869508": ["Yes"], "52869509": "Yes" }`. `applied: true` is Naukri's confirmation.
 
 ```bash
 curl -H "x-api-key: $API_KEY" "localhost:3000/api/jobs/search?keyword=node.js&location=hyderabad&experience=2"
