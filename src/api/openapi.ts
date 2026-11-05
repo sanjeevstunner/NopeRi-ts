@@ -172,11 +172,24 @@ export const openApiSpec = {
         tags: ['Jobs'],
         summary: 'Apply to a job',
         description:
-          'If the job has a questionnaire, the response has `questionnaireRequired: true`; apply again with the same `sid` and the answers in `answers`, leaving out `skippable` questions. `applied: true` is Naukri\'s confirmation.',
+          'If the job has a questionnaire, the response has `questionnaireRequired: true`; apply again with the same `sid` and the answers in `answers`, leaving out `skippable` questions. `applied: true` is Naukri\'s confirmation.\n\n' +
+          'Send multipart with a `resume` PDF to apply with a tailored resume: the current profile resume is backed up, replaced for the apply, and restored afterwards, even if the apply fails. Send the resume again on a questionnaire follow-up.',
         parameters: [jobIdParam],
         requestBody: {
           required: false,
-          content: { 'application/json': { schema: ref('ApplyRequest') } },
+          content: {
+            'application/json': { schema: ref('ApplyRequest') },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['resume'],
+                properties: {
+                  resume: { type: 'string', format: 'binary', description: 'PDF, up to 5 MB. Attached for this apply only.' },
+                  data: { type: 'string', description: 'The ApplyRequest body as a JSON string.' },
+                },
+              },
+            },
+          },
         },
         responses: { '200': json(ref('ApplyResult')), ...commonErrors },
       },
@@ -193,6 +206,16 @@ export const openApiSpec = {
       },
     },
     '/api/profile': {
+      get: {
+        tags: ['Profile'],
+        summary: 'Full profile',
+        description: "Naukri's profile response as-is: `user`, `profile` (incl. `cvInfo`), `employments`, `educations`, `itskills`, `projects`, `certifications` and more.",
+        responses: {
+          '200': json({ type: 'object', additionalProperties: true }, "Naukri's full profile."),
+          '401': commonErrors['401'],
+          '502': commonErrors['502'],
+        },
+      },
       patch: {
         tags: ['Profile'],
         summary: 'Update headline, name or summary',
@@ -216,6 +239,15 @@ export const openApiSpec = {
       },
     },
     '/api/profile/resume': {
+      get: {
+        tags: ['Profile'],
+        summary: 'Download the current resume',
+        responses: {
+          '200': { description: 'The PDF, with its Naukri filename in Content-Disposition.', content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } } },
+          '401': commonErrors['401'],
+          '502': commonErrors['502'],
+        },
+      },
       put: {
         tags: ['Profile'],
         summary: 'Upload a resume',

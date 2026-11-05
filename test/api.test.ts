@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { after, before, test } from 'node:test';
 import { createApp, type Services } from '../src/api/app.ts';
 import { NaukriAuthError } from '../src/naukri/errors.ts';
+import { NaukriProfile } from '../src/naukri/profile.ts';
 
 const KEY = 'test-key-0123456789';
 const calls: unknown[] = [];
@@ -11,6 +12,7 @@ const calls: unknown[] = [];
 const services = {
   auth: { status: { loggedIn: true, loginTime: null } },
   profile: {
+    full: async () => ({ profile: [{ profileId: 'p1' }] }),
     update: async (f: unknown) => (calls.push(f), { profileId: 'p1', response: {} }),
     uploadResume: async (b: Buffer, name: string) => (calls.push([b.length, name]), { profileId: 'p1', response: {} }),
   },
@@ -51,6 +53,7 @@ test('search coerces query params and rejects missing keyword', async () => {
 });
 
 test('profile update needs at least one field', async () => {
+  assert.deepEqual(await (await call('/api/profile')).json(), { profile: [{ profileId: 'p1' }] });
   assert.equal((await call('/api/profile', { method: 'PATCH', body: '{}' })).status, 400);
   assert.equal((await call('/api/profile', { method: 'PATCH', body: '{"headline":"Backend"}' })).status, 200);
 });
@@ -81,4 +84,44 @@ test('Naukri errors map to typed JSON errors', async () => {
   assert.equal((await res.json()).error.code, 'NAUKRI_AUTH');
   assert.equal((await call('/api/jobs/abc/apply', { method: 'POST', body: '{}' })).status, 400);
   assert.equal((await call('/api/nope')).status, 404);
+});
+
+test('apply with a resume swaps it in, then restores the original even when apply fails', async () => {
+  // Real withResume (lock + finally); only the Naukri calls underneath are stubbed.
+  const uploads: string[] = [];
+  class StubProfile extends NaukriProfile {
+    override currentResume = async () => ({ file: Buffer.from('%PDF-original'), filename: 'Original-v1.pdf' });
+    override uploadResume = async (_b: Buffer, name = '') => (uploads.push(name), { profileId: 'p1', response: {} });
+  }
+  let applied: unknown;
+  const jobs = {
+    apply: async (p: { jobId: string }) => {
+      applied = p;
+      if (p.jobId === '2') throw new NaukriAuthError('token expired', 401);
+      return { applied: true };
+    },
+  };
+  const app = createApp({ ...services, profile: new StubProfile({} as any, {} as any), jobs } as unknown as Services, KEY);
+  const srv = app.listen(0);
+  const url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`;
+  const apply = (jobId: string, data?: string) => {
+    const form = new FormData();
+    form.append('resume', new Blob([new TextEncoder().encode('%PDF-tailored')]), 'Tailored.pdf');
+    if (data !== undefined) form.append('data', data);
+    return fetch(`${url}/api/jobs/${jobId}/apply`, { method: 'POST', body: form, headers: { 'x-api-key': KEY } });
+  };
+  try {
+    const ok = await apply('1', '{"sid":"42","mandatorySkills":["node"]}');
+    assert.equal(ok.status, 200);
+    assert.deepEqual(applied, { jobId: '1', sid: '42', mandatorySkills: ['node'] });
+    assert.deepEqual(uploads, ['Tailored.pdf', 'Original-v1.pdf']);
+
+    assert.equal((await apply('2')).status, 401);
+    assert.deepEqual(uploads.slice(2), ['Tailored.pdf', 'Original-v1.pdf']); // restored despite the failure
+
+    assert.equal((await apply('1', 'not json')).status, 400);
+    assert.equal(uploads.length, 4); // bad input never touches the profile
+  } finally {
+    srv.close();
+  }
 });

@@ -21,7 +21,7 @@ export function createApp({ auth, profile, jobs }: Services, apiKey: string) {
       res.json(openApiSpec);
     })
     .use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, { customSiteTitle: 'NopeRi API' }))
-    .use('/api', requireApiKey(apiKey), authRoutes(auth), profileRoutes(profile), jobRoutes(jobs))
+    .use('/api', requireApiKey(apiKey), authRoutes(auth), profileRoutes(profile), jobRoutes(jobs, profile))
     .use(notFound)
     .use(errorHandler);
 }

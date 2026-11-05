@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { FILTER_PARAMS } from '../../naukri/constants.ts';
 import type { NaukriJobs } from '../../naukri/jobs.ts';
+import type { NaukriProfile } from '../../naukri/profile.ts';
+import { applyUpload, ResumeFile } from './profile.ts';
 
 const Search = z.object({
   keyword: z.string().trim().min(1),
@@ -38,7 +40,16 @@ const Apply = z.object({
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
 });
 
-export function jobRoutes(jobs: NaukriJobs) {
+const ApplyData = z.string().transform((s, ctx) => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    ctx.addIssue({ code: 'custom', message: '"data" must be the apply body as a JSON string' });
+    return z.NEVER;
+  }
+});
+
+export function jobRoutes(jobs: NaukriJobs, profile: NaukriProfile) {
   return Router()
     .get('/jobs/recommended', async (_req, res) => {
       res.json(await jobs.recommended());
@@ -49,8 +60,13 @@ export function jobRoutes(jobs: NaukriJobs) {
     .get('/jobs/:jobId', async (req, res) => {
       res.json(await jobs.details(JobId.parse(req.params.jobId), Sid.parse(req.query).sid));
     })
-    .post('/jobs/:jobId/apply', async (req, res) => {
+    // JSON body, or multipart with a `resume` PDF + `data` JSON: the resume is swapped in for this apply only.
+    .post('/jobs/:jobId/apply', applyUpload, async (req, res) => {
       const jobId = JobId.parse(req.params.jobId);
-      res.json(await jobs.apply({ jobId, ...Apply.parse(req.body ?? {}) }));
+      const body = typeof req.body?.data === 'string' ? ApplyData.parse(req.body.data) : (req.body ?? {});
+      const params = { jobId, ...Apply.parse(body) };
+      if (!req.file) return void res.json(await jobs.apply(params));
+      const { buffer, originalname } = ResumeFile.parse(req.file);
+      res.json(await profile.withResume(buffer, originalname, () => jobs.apply(params)));
     });
 }

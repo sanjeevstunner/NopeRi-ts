@@ -13,13 +13,16 @@ const ProfileUpdate = z
   .partial()
   .refine((f) => Object.values(f).some((v) => v !== undefined), 'Provide at least one of headline, name, summary');
 
-const RESUME_FIELD = 'resume';
+export const RESUME_FIELD = 'resume';
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 // Memory storage: the file is forwarded to Naukri as-is, never written to disk.
-const resumeUpload = multer({ limits: { fileSize: MAX_RESUME_BYTES, files: 1, fields: 0 } }).single(RESUME_FIELD);
+const upload = (fields: number) => multer({ limits: { fileSize: MAX_RESUME_BYTES, files: 1, fields } }).single(RESUME_FIELD);
+const resumeUpload = upload(0);
+/** Apply takes the resume plus one `data` field holding the JSON apply body. */
+export const applyUpload = upload(1);
 
-const ResumeFile = z.object(
+export const ResumeFile = z.object(
   {
     buffer: z.instanceof(Buffer).refine((b) => b.subarray(0, 5).toString() === '%PDF-', 'File is not a PDF'),
     // Keep the client's name (Naukri shows it) minus anything path-like or exotic.
@@ -43,8 +46,15 @@ export function profileRoutes(profile: NaukriProfile) {
     .get('/profile/id', async (_req, res) => {
       res.json({ profileId: await profile.profileId() });
     })
+    .get('/profile', async (_req, res) => {
+      res.json(await profile.full());
+    })
     .patch('/profile', async (req, res) => {
       res.json(await profile.update(ProfileUpdate.parse(req.body)));
+    })
+    .get('/profile/resume', async (_req, res) => {
+      const { file, filename } = await profile.currentResume();
+      res.type('application/pdf').attachment(filename).send(file);
     })
     .put('/profile/resume', resumeUpload, async (req, res) => {
       const { buffer, originalname } = ResumeFile.parse(req.file);
