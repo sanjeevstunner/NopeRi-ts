@@ -15,6 +15,20 @@ export const URLS = {
   apply: 'https://www.naukri.com/cloudgateway-workflow/workflow-services/apply-workflow/v1/apply',
 } as const;
 
+/** Search filter cluster key (as returned in `clusters`) → the query param Naukri filters on. Each verified live against cluster counts; `employement` left out (param unknown). */
+export const FILTER_PARAMS: Record<string, string> = {
+  wfhType: 'wfhType',
+  citiesGid: 'cityTypeGid',
+  functionalAreaGid: 'functionAreaIdGid',
+  salaryRange: 'ctcFilter',
+  business_size: 'qbusinessSize',
+  glbl_RoleCat: 'glbl_qcrc',
+  ugCourseGid: 'ugTypeGid',
+  pgCourseGid: 'pgTypeGid',
+  industryTypeGid: 'industryTypeIdGid',
+  topGroupId: 'qctopGroupId',
+};
+
 export const STATIC_JS_BASE = 'https://static.naukimg.com/s/5/105/j/';
 /** Last-known-good mnj bundle versions, tried only if discovery fails. Newest first. */
 export const MNJ_FALLBACK_VERSIONS = ['_v323', '_v299'];

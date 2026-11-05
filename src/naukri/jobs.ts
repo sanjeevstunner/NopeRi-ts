@@ -1,9 +1,9 @@
 import type { NaukriAuth } from './auth.ts';
-import { APPLY_SOURCES, HEADERS, URLS } from './constants.ts';
+import { APPLY_SOURCES, FILTER_PARAMS, HEADERS, URLS } from './constants.ts';
 import { NaukriAuthError, NaukriUpstreamError } from './errors.ts';
 import { compact, readJson, type Http } from './http.ts';
 import { buildSeoKey, generateNkparam, newSid, parseJob } from './parsers.ts';
-import type { ApplyParams, Job, SearchParams } from './types.ts';
+import type { ApplyParams, Cluster, Job, SearchParams, SearchResult } from './types.ts';
 
 /** Job search, recommendations, details and apply. */
 export class NaukriJobs {
@@ -38,8 +38,10 @@ export class NaukriJobs {
     experience,
     resultsPerPage = 20,
     latLong,
-  }: SearchParams): Promise<Job[]> {
-    const res = await this.#http.get(URLS.search, {
+    filters = {},
+  }: SearchParams): Promise<SearchResult> {
+    const fq = filterQuery(filters);
+    const res = await this.#http.get(fq ? `${URLS.search}?${fq}` : URLS.search, {
       headers: {
         ...HEADERS.base,
         'accept-language': 'en-US,en;q=0.9',
@@ -66,9 +68,14 @@ export class NaukriJobs {
     });
     if (res.statusCode === 403) throw new NaukriAuthError('Search rejected (nkparam likely invalid)', 403, res.text);
     // 406 is Naukri's validation error for unsupported filter combinations: treat as no results.
-    if (res.statusCode === 406) return [];
+    if (res.statusCode === 406) return { jobs: [], total: 0, clusters: {}, clusterOrder: [] };
     const data = readJson(res, 'Job search');
-    return (data.jobDetails ?? data.jobs ?? []).map(parseJob);
+    const jobs = (data.jobDetails ?? data.jobs ?? []).map(parseJob);
+    const clusters = pickClusters(data.clusters);
+    // clusterOrder lists every group Naukri knows; keep the ones we got, then any it left out.
+    const order = (data.clusterOrder ?? []).filter((k: string) => k in clusters);
+    const clusterOrder = [...order, ...Object.keys(clusters).filter((k) => !order.includes(k))];
+    return { jobs, total: Number(data.noOfJobs) || jobs.length, clusters, clusterOrder };
   }
 
   /** Raw job details plus whether applying redirects to the company's own site. */
@@ -123,4 +130,25 @@ export class NaukriJobs {
     const questionnaire = result?.jobs?.[0]?.questionnaire;
     return { questionnaireRequired: Array.isArray(questionnaire) && questionnaire.length > 0, result };
   }
+}
+
+/** Repeated query params (`wfhType=0&wfhType=2`), which httpcloak's `params` can't express. */
+export function filterQuery(filters: Record<string, string[]>): string {
+  const q = new URLSearchParams();
+  for (const [key, ids] of Object.entries(filters)) {
+    const param = FILTER_PARAMS[key];
+    if (param) for (const id of ids) q.append(param, id);
+  }
+  return q.toString();
+}
+
+/** Keeps only the filter groups we can send back, as clean `{id,count,label}` lists. */
+export function pickClusters(raw: unknown): Record<string, Cluster[]> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, Cluster[]> = {};
+  for (const [key, list] of Object.entries(raw)) {
+    if (!(key in FILTER_PARAMS) || !Array.isArray(list) || !list.length) continue;
+    out[key] = list.map((c) => ({ id: String(c.id), count: Number(c.count) || 0, label: String(c.label) }));
+  }
+  return out;
 }
