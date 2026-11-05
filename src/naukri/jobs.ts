@@ -130,9 +130,10 @@ export class NaukriJobs {
     const questionnaire = parseQuestionnaire(result);
     // Success is `applyStatus: { [jobId]: 200 }` with jobs[0] "You have successfully applied to this job."
     const job = result?.jobs?.[0];
-    const applied = result?.applyStatus?.[jobId] === 200 || job?.status === 200;
+    const status = Number(result?.applyStatus?.[jobId] ?? job?.status) || null;
+    const applied = status === 200;
     // The answers go with the same sid in the second call, as the browser does.
-    return { applied, message: typeof job?.message === 'string' ? job.message : null, sid, questionnaireRequired: questionnaire.length > 0, questionnaire, result };
+    return { applied, status, message: typeof job?.message === 'string' ? job.message : null, sid, questionnaireRequired: questionnaire.length > 0, questionnaire, result };
   }
 }
 

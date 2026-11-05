@@ -87,7 +87,7 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | GET | `/api/jobs/recommended` | | |
 | GET | `/api/jobs/search` | `?keyword` (required) `&location&page&experience&jobAge&resultsPerPage&latLong` | No login needed |
 | GET | `/api/jobs/:jobId` | `?sid` | `{ externalApply, skills: { mandatory, optional }, details }` |
-| POST | `/api/jobs/:jobId/apply` | `{ mandatorySkills?, optionalSkills?, source?, sid?, answers? }` | Returns `{ applied, message, sid, questionnaireRequired, questionnaire, result }` |
+| POST | `/api/jobs/:jobId/apply` | `{ mandatorySkills?, optionalSkills?, source?, sid?, answers? }` | Returns `{ applied, status, message, sid, questionnaireRequired, questionnaire, result }` |
 
 Error codes: `UNAUTHORIZED` (bad API key), `VALIDATION_ERROR` (400), `NAUKRI_AUTH` (401: login failed, OTP needed, or token expired), `NAUKRI_UPSTREAM` / `NAUKRI_UNREACHABLE` (502).
 

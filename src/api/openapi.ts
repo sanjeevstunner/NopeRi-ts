@@ -366,6 +366,7 @@ export const openApiSpec = {
         type: 'object',
         properties: {
           applied: { type: 'boolean', description: "Naukri confirmed the application (applyStatus 200)." },
+          status: { type: 'integer', nullable: true, description: "Naukri's apply status for the job; 200 is applied." },
           message: { type: 'string', nullable: true, description: "Naukri's message, e.g. \"You have successfully applied to this job.\"" },
           sid: { type: 'string', description: 'The sid used; send it again with the answers.' },
           questionnaireRequired: { type: 'boolean' },
