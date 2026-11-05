@@ -6,6 +6,9 @@ export const URLS = {
   fileValidation: 'https://filevalidation.naukri.com/file',
   dashboard: 'https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v0/users/self/dashboard',
   profileUpdate: 'https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v1/users/self/fullprofiles',
+  fullProfile: 'https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v2/users/self?expand_level=4',
+  resumeDownload: (profileId: string) =>
+    `https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v1/users/self/profiles/${profileId}/resume`,
   resumeUpdate: (profileId: string) =>
     `https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v0/users/self/profiles/${profileId}/advResume`,
   history: 'https://www.naukri.com/cloudgateway-apply/whtma-services/v0/applyapi/v5/history',

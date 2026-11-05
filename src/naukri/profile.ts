@@ -1,7 +1,7 @@
 import type { NaukriAuth } from './auth.ts';
 import { HEADERS, URLS } from './constants.ts';
 import { NaukriUpstreamError } from './errors.ts';
-import { readJson, type Http } from './http.ts';
+import { ensureOk, readJson, type Http } from './http.ts';
 import {
   appJsUrl,
   extractFormKey,
@@ -20,6 +20,8 @@ export class NaukriProfile {
   readonly #auth: NaukriAuth;
   #profileId?: string;
   #formKey?: string;
+  // ponytail: single in-process lock, fine for the one instance the README requires
+  #swap: Promise<unknown> = Promise.resolve();
 
   constructor(http: Http, auth: NaukriAuth) {
     this.#http = http;
@@ -61,6 +63,50 @@ export class NaukriProfile {
       json: { textCV: { formKey, fileKey } },
     });
     return { profileId, response: readJson(res, 'Resume update') };
+  }
+
+  /** Naukri's full profile as-is: user, profile (incl. cvInfo), employments, educations, skills, projects, ... */
+  async full(): Promise<Record<string, any>> {
+    const headers = await this.#auth.authHeaders({ appid: '105' });
+    return readJson(await this.#http.get(URLS.fullProfile, { headers }), 'Fetch profile');
+  }
+
+  /** The resume currently attached to the profile, with the filename Naukri shows for it. */
+  async currentResume(): Promise<{ file: Buffer; filename: string }> {
+    const headers = await this.#auth.authHeaders({ appid: '105' });
+    const profile = (await this.full()).profile?.[0];
+    const cv = profile?.cvInfo;
+    if (!profile?.profileId || !cv?.isAvailable) throw new NaukriUpstreamError('No resume attached to the profile');
+
+    const res = ensureOk(await this.#http.get(URLS.resumeDownload(profile.profileId), { headers }), 'Download resume');
+    if (res.body.subarray(0, 5).toString() !== '%PDF-') {
+      throw new NaukriUpstreamError('Downloaded resume is not a PDF', res.statusCode);
+    }
+    const filename = /\.pdf$/i.test(cv.fileName ?? '') ? cv.fileName : `${cv.fileName || 'resume'}.pdf`;
+    return { file: res.body, filename };
+  }
+
+  /**
+   * Runs `fn` with `file` as the profile resume, then puts the original back, even if `fn` throws.
+   * Calls are serialised so two swaps never back up each other's tailored resume.
+   */
+  withResume<T>(file: Buffer, filename: string, fn: () => Promise<T>): Promise<T> {
+    const run = this.#swap.then(async () => {
+      const original = await this.currentResume();
+      try {
+        await this.uploadResume(file, filename);
+        return await fn();
+      } finally {
+        await this.uploadResume(original.file, original.filename).catch((err) => {
+          throw new NaukriUpstreamError(
+            `Original resume "${original.filename}" was NOT restored: ${err.message}`,
+            err.upstreamStatus,
+          );
+        });
+      }
+    });
+    this.#swap = run.catch(() => {});
+    return run;
   }
 
   async applicationHistory({

@@ -81,13 +81,15 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | POST | `/api/auth/otp/send` | `{ username?, isMobile? }` | Use when Naukri demands OTP/MFA |
 | POST | `/api/auth/otp/verify` | `{ otp, username?, isMobile? }` | Completes the OTP login |
 | GET | `/api/profile/id` | | |
+| GET | `/api/profile` | | Full profile as Naukri returns it (user, profile incl. `cvInfo`, employments, educations, skills, projects, ...) |
 | PATCH | `/api/profile` | `{ headline?, name?, summary? }` | At least one field |
+| GET | `/api/profile/resume` | | Downloads the current resume PDF under its Naukri filename |
 | PUT | `/api/profile/resume` | `multipart/form-data`, PDF in field `resume` | Max 5 MB. The uploaded filename is kept (sanitised) |
 | GET | `/api/applications` | `?pageSize&days&pageNumber&mobile` | Application history |
 | GET | `/api/jobs/recommended` | | |
 | GET | `/api/jobs/search` | `?keyword` (required) `&location&page&experience&jobAge&resultsPerPage&latLong` | No login needed |
 | GET | `/api/jobs/:jobId` | `?sid` | `{ externalApply, skills: { mandatory, optional }, details }` |
-| POST | `/api/jobs/:jobId/apply` | `{ mandatorySkills?, optionalSkills?, source?, sid?, answers? }` | Returns `{ applied, status, message, sid, questionnaireRequired, questionnaire, result }` |
+| POST | `/api/jobs/:jobId/apply` | `{ mandatorySkills?, optionalSkills?, source?, sid?, answers? }`, or multipart `resume` (PDF) + `data` (that JSON) | With a `resume`, the profile resume is swapped in for this apply and restored afterwards, even on failure. Returns `{ applied, status, message, sid, questionnaireRequired, questionnaire, result }` |
 
 Error codes: `UNAUTHORIZED` (bad API key), `VALIDATION_ERROR` (400), `NAUKRI_AUTH` (401: login failed, OTP needed, or token expired), `NAUKRI_UPSTREAM` / `NAUKRI_UNREACHABLE` (502).
 
