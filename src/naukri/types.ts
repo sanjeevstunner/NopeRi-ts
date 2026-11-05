@@ -46,6 +46,22 @@ export interface SearchParams {
   experience?: number;
   resultsPerPage?: number;
   latLong?: string;
+  /** Naukri filters keyed by cluster key (e.g. `wfhType: ['2']`); ids come from a previous result's `clusters`. */
+  filters?: Record<string, string[]>;
+}
+
+export interface Cluster {
+  id: string;
+  count: number;
+  label: string;
+}
+
+export interface SearchResult {
+  jobs: Job[];
+  total: number;
+  /** Filter groups for this search, keyed by cluster key. Only keys in FILTER_PARAMS are returned. */
+  clusters: Record<string, Cluster[]>;
+  clusterOrder: string[];
 }
 
 export interface HistoryParams {

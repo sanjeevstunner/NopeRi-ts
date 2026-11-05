@@ -75,3 +75,11 @@ test('formKey discovery helpers', () => {
   assert.equal(extractFormKey('{key:"initUploader",value:function(){var d="F51f8e7e54e205"}}'), 'F51f8e7e54e205');
   assert.equal(extractFormKey('nothing here'), undefined);
 });
+
+test('filterQuery maps cluster keys to Naukri params, repeated; pickClusters drops unknown groups', async () => {
+  const { filterQuery, pickClusters } = await import('../src/naukri/jobs.ts');
+  assert.equal(filterQuery({ wfhType: ['0', '2'], citiesGid: ['97'], bogus: ['1'] }), 'wfhType=0&wfhType=2&cityTypeGid=97');
+  assert.deepEqual(pickClusters({ wfhType: [{ id: 2, count: '50', label: 'Remote' }], fatFooter: [{}], citiesGid: [] }), {
+    wfhType: [{ id: '2', count: 50, label: 'Remote' }],
+  });
+});

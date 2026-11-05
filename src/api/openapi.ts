@@ -1,3 +1,4 @@
+import { FILTER_PARAMS } from '../naukri/constants.ts';
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 
 const errorResponse = (description: string, code: string, message: string) => ({
@@ -148,8 +149,14 @@ export const openApiSpec = {
           q('experience', { type: 'integer', minimum: 0, maximum: 50 }, 'Years of experience.'),
           q('resultsPerPage', { type: 'integer', minimum: 1, maximum: 100 }, 'Page size.'),
           q('latLong', { type: 'string' }, 'Coordinates, `lat,long`.'),
+          ...Object.keys(FILTER_PARAMS).map((key) =>
+            q(`filter.${key}`, { type: 'array', items: { type: 'string' } }, `Filter by \`clusters.${key}\` ids. Repeat to select several.`, {
+              style: 'form',
+              explode: true,
+            }),
+          ),
         ],
-        responses: { '200': json({ type: 'array', items: ref('Job') }), ...commonErrors },
+        responses: { '200': json(ref('SearchResult')), ...commonErrors },
       },
     },
     '/api/jobs/{jobId}': {
@@ -307,6 +314,23 @@ export const openApiSpec = {
           applyLink: { type: 'string' },
           description: { type: 'string' },
           tags: { type: 'array', items: { type: 'string' } },
+        },
+      },
+      Cluster: {
+        type: 'object',
+        properties: { id: { type: 'string' }, count: { type: 'integer' }, label: { type: 'string' } },
+      },
+      SearchResult: {
+        type: 'object',
+        properties: {
+          jobs: { type: 'array', items: ref('Job') },
+          total: { type: 'integer', description: 'Total matching jobs across all pages.' },
+          clusters: {
+            type: 'object',
+            description: 'Filter groups keyed by cluster key; send ids back as `filter.<key>`.',
+            additionalProperties: { type: 'array', items: ref('Cluster') },
+          },
+          clusterOrder: { type: 'array', items: { type: 'string' }, description: "Naukri's display order for `clusters`." },
         },
       },
       JobDetails: {

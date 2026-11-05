@@ -15,7 +15,7 @@ const services = {
     uploadResume: async (b: Buffer, name: string) => (calls.push([b.length, name]), { profileId: 'p1', response: {} }),
   },
   jobs: {
-    search: async (p: unknown) => (calls.push(p), []),
+    search: async (p: unknown) => (calls.push(p), { jobs: [], total: 0, clusters: {}, clusterOrder: [] }),
     apply: async () => {
       throw new NaukriAuthError('token expired', 401);
     },
@@ -42,6 +42,9 @@ test('health is public, /api requires the key', async () => {
 test('search coerces query params and rejects missing keyword', async () => {
   assert.equal((await call('/api/jobs/search?keyword=node&page=2&experience=3')).status, 200);
   assert.deepEqual(calls.at(-1), { keyword: 'node', page: 2, experience: 3 });
+  assert.equal((await call('/api/jobs/search?keyword=node&filter.wfhType=2&filter.wfhType=3&filter.citiesGid=97')).status, 200);
+  assert.deepEqual(calls.at(-1), { keyword: 'node', filters: { wfhType: ['2', '3'], citiesGid: ['97'] } });
+  assert.equal((await call('/api/jobs/search?keyword=node&filter.bogus=1')).status, 400);
   const res = await call('/api/jobs/search');
   assert.equal(res.status, 400);
   assert.equal((await res.json()).error.code, 'VALIDATION_ERROR');
