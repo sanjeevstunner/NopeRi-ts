@@ -28,3 +28,10 @@ export class NaukriUpstreamError extends NaukriError {
     super(message, { status: 502, code: 'NAUKRI_UPSTREAM', upstreamStatus, detail });
   }
 }
+
+/** Naukri's daily apply limit is used up (it answers 403 with customErrorCode 403009). Retry tomorrow. */
+export class NaukriQuotaError extends NaukriError {
+  constructor(message: string, upstreamStatus?: number, detail?: string) {
+    super(message, { status: 429, code: 'NAUKRI_QUOTA', upstreamStatus, detail });
+  }
+}
