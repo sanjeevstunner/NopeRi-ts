@@ -2,7 +2,7 @@ import type { NaukriAuth } from './auth.ts';
 import { APPLY_SOURCES, FILTER_PARAMS, HEADERS, URLS } from './constants.ts';
 import { NaukriAuthError, NaukriUpstreamError } from './errors.ts';
 import { compact, readJson, type Http } from './http.ts';
-import { buildSeoKey, generateNkparam, newSid, parseJob } from './parsers.ts';
+import { buildSeoKey, generateNkparam, newSid, parseJob, parseQuestionnaire, parseSkills } from './parsers.ts';
 import type { ApplyParams, Cluster, Job, SearchParams, SearchResult } from './types.ts';
 
 /** Job search, recommendations, details and apply. */
@@ -97,12 +97,12 @@ export class NaukriJobs {
     const job = details?.jobDetails;
     if (!job || typeof job !== 'object') throw new NaukriUpstreamError('Job details response has no jobDetails', res.statusCode, res.text);
     // Company-site jobs carry both URLs; Naukri-apply jobs have neither.
-    return { externalApply: Boolean(job.applyRedirectUrl || job.companyApplyUrl), details };
+    return { externalApply: Boolean(job.applyRedirectUrl || job.companyApplyUrl), skills: parseSkills(job), details };
   }
 
   /**
-   * Easy-apply. If Naukri answers with a questionnaire, call again with `answers`
-   * keyed by questionId (text → string, options → array of option keys).
+   * Easy-apply. If Naukri answers with a questionnaire, call again with the same `sid`
+   * and `answers` keyed by questionId (text → string, options → array of option labels).
    */
   async apply({ jobId, mandatorySkills = [], optionalSkills = [], sid = newSid(), source = 'recommended', answers }: ApplyParams) {
     const { applySrc, logstr } = APPLY_SOURCES[source];
@@ -123,12 +123,17 @@ export class NaukriJobs {
         applySrc,
         sid,
         mid: '',
-        ...(answers && { applyData: { [jobId]: { answers } } }),
+        ...(answers && { applyData: { [jobId]: { answers } }, qupData: {} }),
       },
     });
     const result = readJson(res, 'Apply');
-    const questionnaire = result?.jobs?.[0]?.questionnaire;
-    return { questionnaireRequired: Array.isArray(questionnaire) && questionnaire.length > 0, result };
+    const questionnaire = parseQuestionnaire(result);
+    // Success is `applyStatus: { [jobId]: 200 }` with jobs[0] "You have successfully applied to this job."
+    const job = result?.jobs?.[0];
+    const status = Number(result?.applyStatus?.[jobId] ?? job?.status) || null;
+    const applied = status === 200;
+    // The answers go with the same sid in the second call, as the browser does.
+    return { applied, status, message: typeof job?.message === 'string' ? job.message : null, sid, questionnaireRequired: questionnaire.length > 0, questionnaire, result };
   }
 }
 

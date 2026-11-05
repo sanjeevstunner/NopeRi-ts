@@ -79,6 +79,28 @@ export interface ApplyParams {
   optionalSkills?: string[];
   sid?: string;
   source?: ApplySource;
-  /** Questionnaire answers keyed by questionId. Text answers are strings, option answers are arrays of option keys. */
+  /** Questionnaire answers keyed by questionId. Text answers are strings, option answers are arrays of option labels, e.g. ["Yes"]. */
   answers?: Record<string, string | string[]>;
+}
+
+/**
+ * A questionnaire question. Answer text questions with a string (Naukri caps it at 100 characters),
+ * choice questions with `[optionLabel]` and multi questions with several labels: the browser sends labels, not keys.
+ */
+export interface Question {
+  id: string;
+  text: string;
+  type: 'text' | 'choice' | 'multi';
+  /** Option key → label; empty for text questions. */
+  options: Record<string, string>;
+  required: boolean;
+  /** Naukri fills it from the Naukri profile; leave it out of `answers`. */
+  skippable: boolean;
+  /** What Naukri would fill in, e.g. ["750000"]. */
+  prefill: string[];
+}
+
+export interface JobSkills {
+  mandatory: string[];
+  optional: string[];
 }
