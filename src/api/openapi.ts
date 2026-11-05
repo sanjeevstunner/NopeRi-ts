@@ -191,7 +191,11 @@ export const openApiSpec = {
             },
           },
         },
-        responses: { '200': json(ref('ApplyResult')), ...commonErrors },
+        responses: {
+          '200': json(ref('ApplyResult')),
+          ...commonErrors,
+          '429': errorResponse("Naukri's daily apply limit is used up. Try again tomorrow.", 'NAUKRI_QUOTA', 'Apply: Daily quota of jobs exceeded'),
+        },
       },
     },
     '/api/profile/id': {

@@ -125,3 +125,13 @@ test('apply with a resume swaps it in, then restores the original even when appl
     srv.close();
   }
 });
+
+test("Naukri's daily apply quota 403 is a 429 quota error, not an auth error", async () => {
+  const { ensureOk } = await import('../src/naukri/http.ts');
+  const { NaukriAuthError, NaukriQuotaError } = await import('../src/naukri/errors.ts');
+  const res = (statusCode: number, body: object) =>
+    ({ statusCode, ok: false, reason: 'Forbidden', text: JSON.stringify(body), json: () => body }) as any;
+  const quota = { message: 'Daily quota of jobs exceeded', statusCode: 403, validationErrors: [{ customErrorCode: 403009 }] };
+  assert.throws(() => ensureOk(res(403, quota), 'Apply'), (e: any) => e instanceof NaukriQuotaError && e.status === 429);
+  assert.throws(() => ensureOk(res(403, { message: 'nope' }), 'Apply'), NaukriAuthError);
+});
