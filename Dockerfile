@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY package.json package-lock.json .npmrc ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json .npmrc ./
+# No lock file: resolves fresh from package.json on every build.
+RUN npm install --omit=dev --no-package-lock && npm cache clean --force
 
 COPY src ./src
 
