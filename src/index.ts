@@ -11,7 +11,7 @@ try {
   process.exit(1);
 }
 
-const naukri = createNaukriClient(config.naukri);
+const naukri = config.naukri && createNaukriClient(config.naukri);
 const gulf = config.gulf && createGulfClient(config.gulf);
 const server = createApp(naukri, config.apiKey, gulf).listen(config.port, () => {
   console.log(`noperi listening on :${config.port}`);
@@ -20,7 +20,7 @@ const server = createApp(naukri, config.apiKey, gulf).listen(config.port, () => 
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {
     server.close(() => {
-      naukri.close();
+      naukri?.close();
       gulf?.close();
       process.exit(0);
     });

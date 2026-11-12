@@ -62,8 +62,8 @@ Any string of 16 or more characters works, but a random one is safer. Keep it on
 | Variable | Required | Description |
 |---|---|---|
 | `API_KEY` | yes | Shared secret clients send as `x-api-key` or `Authorization: Bearer`. Min 16 chars. |
-| `NAUKRI_USERNAME` | yes | Naukri login email or phone |
-| `NAUKRI_PASSWORD` | yes | Naukri password |
+| `NAUKRI_USERNAME` / `NAUKRI_PASSWORD` | one of Naukri or NaukriGulf | Naukri login; enables the Naukri `/api/*` routes |
+| `NAUKRIGULF_USERNAME` / `NAUKRIGULF_PASSWORD` | one of Naukri or NaukriGulf | NaukriGulf login; enables `/api/gulf/*` |
 | `PORT` | no | Default `3000` |
 | `NAUKRI_PROXY` | no | `http://user:pass@host:port` or `socks5://host:port` |
 

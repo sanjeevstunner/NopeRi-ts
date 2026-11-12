@@ -11,7 +11,7 @@ import { profileRoutes } from './routes/profile.ts';
 
 export type Services = Pick<NaukriClient, 'auth' | 'profile' | 'jobs'>;
 
-export function createApp({ auth, profile, jobs }: Services, apiKey: string, gulf?: Pick<GulfClient, 'auth' | 'jobs' | 'profile'>) {
+export function createApp(naukri: Services | undefined, apiKey: string, gulf?: Pick<GulfClient, 'auth' | 'jobs' | 'profile'>) {
   return express()
     .disable('x-powered-by')
     .use(express.json({ limit: '100kb' }))
@@ -23,7 +23,7 @@ export function createApp({ auth, profile, jobs }: Services, apiKey: string, gul
       res.json(openApiSpec);
     })
     .use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, { customSiteTitle: 'NopeRi API' }))
-    .use('/api', requireApiKey(apiKey), authRoutes(auth), profileRoutes(profile), jobRoutes(jobs, profile), ...(gulf ? [Router().use('/gulf', gulfRoutes(gulf))] : []))
+    .use('/api', requireApiKey(apiKey), ...(naukri ? [authRoutes(naukri.auth), profileRoutes(naukri.profile), jobRoutes(naukri.jobs, naukri.profile)] : []), ...(gulf ? [Router().use('/gulf', gulfRoutes(gulf))] : []))
     .use(notFound)
     .use(errorHandler);
 }
