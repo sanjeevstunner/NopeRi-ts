@@ -1,6 +1,6 @@
 import { publicEncrypt, constants, randomInt } from 'node:crypto';
 import { MNJ_FALLBACK_VERSIONS, NKPARAM_PUBLIC_KEY, STATIC_JS_BASE } from './constants.ts';
-import type { ApplicationHistory, Job, JobSkills, Question } from './types.ts';
+import type { ApplicationDetail, ApplicationHistory, Job, JobSkills, Question } from './types.ts';
 
 // Pure helpers: no I/O, so they are unit-tested directly.
 
@@ -95,8 +95,8 @@ export function parseSkills(job: any): JobSkills {
   return { mandatory: tags.slice(0, 2), optional: tags.slice(2) };
 }
 
-export function parseHistory(raw: any): ApplicationHistory[] {
-  return (raw?.applyDetails ?? []).map((item: any) => ({
+function parseHistoryItem(item: any): ApplicationHistory {
+  return {
     jobId: item.jobId,
     jobTitle: item.jobTitle,
     company: item.company,
@@ -104,7 +104,7 @@ export function parseHistory(raw: any): ApplicationHistory[] {
     applyType: item.applyType,
     isOpen: item.isOpen === 'true' || item.isOpen === true,
     arsScore: item.arsScore ?? 0,
-    starRating: item.starRating ?? '0',
+    starRating: String(item.starRating ?? '0'),
     jobType: item.jobType ?? '',
     statuses: (item.status ?? []).map((s: any) => ({
       statusId: s.statusId,
@@ -113,7 +113,22 @@ export function parseHistory(raw: any): ApplicationHistory[] {
     })),
     companyRating: item.companyRating?.AggregateRating ? Number(item.companyRating.AggregateRating) : null,
     logoPath: item.logoPath ?? null,
-  }));
+  };
+}
+
+export function parseHistory(raw: any): ApplicationHistory[] {
+  return (raw?.applyDetails ?? []).map(parseHistoryItem);
+}
+
+/** history-description puts status/rating beside `jobDetails`, so merge them into one item first. */
+export function parseHistoryDetail(raw: any): ApplicationDetail {
+  const { applyMatchScore = null, ...matching } = raw?.matchingResults ?? {};
+  return {
+    ...parseHistoryItem({ ...raw?.jobDetails, status: raw?.status, starRating: raw?.starRating, companyRating: raw?.companyRating }),
+    totalApplicants: Number(raw?.totalApplicants) || 0,
+    applyMatchScore,
+    matching,
+  };
 }
 
 // --- formKey discovery -------------------------------------------------------

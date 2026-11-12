@@ -15,6 +15,7 @@ const services = {
     full: async () => ({ profile: [{ profileId: 'p1' }] }),
     update: async (f: unknown) => (calls.push(f), { profileId: 'p1', response: {} }),
     uploadResume: async (b: Buffer, name: string) => (calls.push([b.length, name]), { profileId: 'p1', response: {} }),
+    applicationDetail: async (...a: unknown[]) => (calls.push(a), { totalApplicants: 1 }),
   },
   jobs: {
     search: async (p: unknown) => (calls.push(p), { jobs: [], total: 0, clusters: {}, clusterOrder: [] }),
@@ -50,6 +51,12 @@ test('search coerces query params and rejects missing keyword', async () => {
   const res = await call('/api/jobs/search');
   assert.equal(res.status, 400);
   assert.equal((await res.json()).error.code, 'VALIDATION_ERROR');
+});
+
+test('application detail validates jobId and passes applyType', async () => {
+  assert.equal((await call('/api/applications/abc')).status, 400);
+  assert.equal((await call('/api/applications/123?applyType=BROADCAST')).status, 200);
+  assert.deepEqual(calls.at(-1), ['123', 'BROADCAST']);
 });
 
 test('profile update needs at least one field', async () => {

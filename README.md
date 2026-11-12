@@ -86,6 +86,7 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | GET | `/api/profile/resume` | | Downloads the current resume PDF under its Naukri filename |
 | PUT | `/api/profile/resume` | `multipart/form-data`, PDF in field `resume` | Max 5 MB. The uploaded filename is kept (sanitised) |
 | GET | `/api/applications` | `?pageSize&days&pageNumber&mobile` | Application history |
+| GET | `/api/applications/:jobId` | `?applyType` | Application detail (applicants, match score) |
 | GET | `/api/jobs/recommended` | | |
 | GET | `/api/jobs/search` | `?keyword` (required) `&location&page&experience&jobAge&resultsPerPage&latLong` | No login needed |
 | GET | `/api/jobs/:jobId` | `?sid` | `{ externalApply, skills: { mandatory, optional }, details }` |

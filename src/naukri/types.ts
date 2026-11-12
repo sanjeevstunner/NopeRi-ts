@@ -32,6 +32,13 @@ export interface ApplicationHistory {
   logoPath: string | null;
 }
 
+export interface ApplicationDetail extends ApplicationHistory {
+  totalApplicants: number;
+  applyMatchScore: string | null;
+  /** Naukri's per-dimension comparison (industry, experience, location...) vs other applicants. */
+  matching: Record<string, unknown>;
+}
+
 export interface ProfileFields {
   headline?: string;
   name?: string;
