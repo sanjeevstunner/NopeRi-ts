@@ -3,6 +3,13 @@ import { ensureOk, readJson, type Http } from '../naukri/http.ts';
 import type { GulfAuth } from './auth.ts';
 import { URLS } from './constants.ts';
 
+export interface GulfHistoryParams {
+  limit?: number;
+  offset?: number;
+  /** `easy` = applied on NaukriGulf, `web` = applied on the company site. */
+  type?: 'easy' | 'web';
+}
+
 export interface GulfProfileFields {
   headline?: string;
   summary?: string;
@@ -52,5 +59,15 @@ export class GulfProfile {
     const res = ensureOk(await this.#http.get(URLS.cvAttachment, { headers, params: { systemId: 123, appId: 205 } }), 'Download CV');
     if (res.body.subarray(0, 5).toString() !== '%PDF-') throw new NaukriUpstreamError('Downloaded CV is not a PDF', res.statusCode);
     return { file: res.body, filename: 'cv.pdf' };
+  }
+
+  /** Application history ("What happened to my apply"): `{ totalEasyApplies, totalWebApplies, jobs: [{ jobId, designation, company, applyDate, status: { label, action, date } }] }`. */
+  async applications({ limit = 20, offset = 0, type = 'easy' }: GulfHistoryParams = {}) {
+    const easy = type === 'easy';
+    const res = await this.#http.get(easy ? URLS.easyApplyList : URLS.webApplyList, {
+      headers: await this.#auth.authHeaders(),
+      params: { limit, offset, ...(easy && { dashboardActivity: false, xz: '' }) },
+    });
+    return readJson(res, 'Fetch application history');
   }
 }

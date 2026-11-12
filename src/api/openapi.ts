@@ -90,6 +90,18 @@ const gulfPaths = {
       responses: { '200': { description: 'The CV PDF.', content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } } }, ...gulfErrors },
     },
   },
+  '/api/gulf/applications': {
+    get: {
+      tags: ['NaukriGulf · Profile'],
+      summary: 'Application history',
+      parameters: [
+        q('type', { type: 'string', enum: ['easy', 'web'], default: 'easy' }, '`easy`: applied on NaukriGulf. `web`: applied on the company site.'),
+        q('limit', { type: 'integer', minimum: 1, maximum: 100, default: 20 }, 'Page size.'),
+        q('offset', { type: 'integer', minimum: 0, default: 0 }, 'Items to skip.'),
+      ],
+      responses: { '200': raw("NaukriGulf's history: totals plus `jobs` with `status.label` / `status.action`."), ...gulfErrors },
+    },
+  },
   '/api/gulf/jobs/recommended': {
     get: { tags: ['NaukriGulf · Jobs'], summary: 'Recommended jobs', responses: { '200': raw("NaukriGulf's raw recommendations."), ...gulfErrors } },
   },

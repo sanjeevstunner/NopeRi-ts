@@ -117,6 +117,7 @@ Set `NAUKRIGULF_USERNAME` and `NAUKRIGULF_PASSWORD` to enable `/api/gulf/*` (sam
 | GET | `/api/gulf/profile` | Full profile (`fullProfile.myCV`) |
 | GET | `/api/gulf/profile/sections/:section` | e.g. `cvHeadline`, `profileSummary`, `cvMetadata` |
 | PATCH | `/api/gulf/profile` | `{ headline?, summary? }`; body shape not yet verified live |
+| GET | `/api/gulf/applications` | `?type&limit&offset` (`type` is `easy` or `web`): application history |
 | GET | `/api/gulf/profile/resume` | Downloads the attached CV PDF |
 
 Not yet ported: CV upload (so no resume swap on apply), application history (endpoints still to capture).
