@@ -62,8 +62,8 @@ Any string of 16 or more characters works, but a random one is safer. Keep it on
 | Variable | Required | Description |
 |---|---|---|
 | `API_KEY` | yes | Shared secret clients send as `x-api-key` or `Authorization: Bearer`. Min 16 chars. |
-| `NAUKRI_USERNAME` | yes | Naukri login email or phone |
-| `NAUKRI_PASSWORD` | yes | Naukri password |
+| `NAUKRI_USERNAME` / `NAUKRI_PASSWORD` | one of Naukri or NaukriGulf | Naukri login; enables the Naukri `/api/*` routes |
+| `NAUKRIGULF_USERNAME` / `NAUKRIGULF_PASSWORD` | one of Naukri or NaukriGulf | NaukriGulf login; enables `/api/gulf/*` |
 | `PORT` | no | Default `3000` |
 | `NAUKRI_PROXY` | no | `http://user:pass@host:port` or `socks5://host:port` |
 
@@ -103,6 +103,24 @@ curl -X PUT -H "x-api-key: $API_KEY" -F "resume=@resume.pdf;type=application/pdf
 ```
 
 From a browser, append the file to a `FormData` under `resume` and send it with `fetch(url, { method: 'PUT', body: form })`. Don't set `Content-Type` yourself, because the browser has to add the multipart boundary. A browser app on a different origin also needs CORS, which isn't enabled yet. Calling it from your own backend avoids CORS and keeps the API key out of the browser.
+
+## NaukriGulf (optional)
+
+Set `NAUKRIGULF_USERNAME` and `NAUKRIGULF_PASSWORD` to enable `/api/gulf/*` (same API key). Code is in `src/naukrigulf/`, sharing the HTTP session and error types with the Naukri client.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/gulf/auth/status`, POST `/api/gulf/auth/login` | Cookie session |
+| GET | `/api/gulf/jobs/search` | `?keyword` (required) `&location&page&experience&resultsPerPage`, no login needed |
+| POST | `/api/gulf/jobs/:jobId/apply` | `{ xz?, source? }`; submits a real application. Payload copied from the site's JS, not yet verified live |
+| GET | `/api/gulf/jobs/recommended`, `/api/gulf/jobs/:jobId` | Raw NaukriGulf JSON for now |
+| GET | `/api/gulf/profile` | Full profile (`fullProfile.myCV`) |
+| GET | `/api/gulf/profile/sections/:section` | e.g. `cvHeadline`, `profileSummary`, `cvMetadata` |
+| PATCH | `/api/gulf/profile` | `{ headline?, summary? }`; body shape not yet verified live |
+| GET | `/api/gulf/applications` | `?type&limit&offset` (`type` is `easy` or `web`): application history |
+| GET | `/api/gulf/profile/resume` | Downloads the attached CV PDF |
+
+Not yet ported: CV upload (so no resume swap on apply), application history (endpoints still to capture).
 
 ## Library use
 
