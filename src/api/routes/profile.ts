@@ -62,5 +62,10 @@ export function profileRoutes(profile: NaukriProfile) {
     })
     .get('/applications', async (req, res) => {
       res.json(await profile.applicationHistory(History.parse(req.query)));
+    })
+    .get('/applications/:jobId', async (req, res) => {
+      const jobId = z.string().regex(/^\d+$/, 'jobId must be numeric').parse(req.params.jobId);
+      const { applyType } = z.object({ applyType: z.string().min(1).optional() }).parse(req.query);
+      res.json(await profile.applicationDetail(jobId, applyType));
     });
 }

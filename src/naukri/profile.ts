@@ -9,10 +9,11 @@ import {
   mnjUrl,
   mnjVersion,
   parseHistory,
+  parseHistoryDetail,
   randomFileKey,
   scriptUrls,
 } from './parsers.ts';
-import type { ApplicationHistory, HistoryParams, ProfileFields } from './types.ts';
+import type { ApplicationDetail, ApplicationHistory, HistoryParams, ProfileFields } from './types.ts';
 
 /** Profile reads/writes: profile id, headline/name/summary, resume, application history. */
 export class NaukriProfile {
@@ -125,6 +126,16 @@ export class NaukriProfile {
     const params = { pageSize, days, pageNumber, ...(!mobile && { filterInfo: 2 }) };
     const res = await this.#http.get(URLS.history, { headers, params });
     return parseHistory(readJson(res, 'Fetch application history'));
+  }
+
+  async applicationDetail(jobId: string, applyType = 'normal'): Promise<ApplicationDetail> {
+    const headers = await this.#auth.authHeaders({
+      appid: '107',
+      systemid: '107',
+      referer: 'https://www.naukri.com/myapply/historypage',
+    });
+    const res = await this.#http.get(URLS.historyDescription, { headers, params: { jobId, applyType } });
+    return parseHistoryDetail(readJson(res, 'Fetch application detail'));
   }
 
   /** Uploader form key scraped from Naukri's JS bundle. Cached for the process lifetime. */

@@ -12,6 +12,7 @@ export const URLS = {
   resumeUpdate: (profileId: string) =>
     `https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v0/users/self/profiles/${profileId}/advResume`,
   history: 'https://www.naukri.com/cloudgateway-apply/whtma-services/v0/applyapi/v5/history',
+  historyDescription: 'https://www.naukri.com/cloudgateway-apply/whtma-services/v0/applyapi/v3/history-description',
   search: 'https://www.naukri.com/jobapi/v3/search',
   recommended: 'https://www.naukri.com/jobapi/v2/search/recom-jobs',
   jobDetails: (jobId: string) => `https://www.naukri.com/jobapi/v4/job/${encodeURIComponent(jobId)}`,

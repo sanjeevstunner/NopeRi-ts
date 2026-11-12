@@ -1,6 +1,6 @@
 {
   "name": "noperi-ts",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Naukri.com API client with an Express REST interface",
   "private": true,
   "type": "module",

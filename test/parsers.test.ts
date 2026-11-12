@@ -8,6 +8,7 @@ import {
   mnjVersion,
   newSid,
   parseHistory,
+  parseHistoryDetail,
   parseJob,
   parseQuestionnaire,
   parseSkills,
@@ -68,6 +69,24 @@ test('parseHistory handles ratings and missing fields', () => {
   assert.equal(h.companyRating, 4.1);
   assert.equal(h.statuses[0].statusValue, 'Applied');
   assert.deepEqual(parseHistory({}), []);
+});
+
+test('parseHistoryDetail merges jobDetails with status, rating and match data', () => {
+  const d = parseHistoryDetail({
+    starRating: 1,
+    status: [{ statusId: 1, statusValue: 'Applied', dateTime: 'x' }],
+    totalApplicants: 30244,
+    jobDetails: { jobId: '18', jobTitle: 'AI Eng', company: 'Deloitte', isOpen: 'true' },
+    companyRating: { AggregateRating: '3.6' },
+    matchingResults: { applyMatchScore: 'MEDIUM', Experience: { userMatching: true } },
+  });
+  assert.equal(d.jobTitle, 'AI Eng');
+  assert.equal(d.starRating, '1');
+  assert.equal(d.companyRating, 3.6);
+  assert.equal(d.statuses.length, 1);
+  assert.equal(d.totalApplicants, 30244);
+  assert.equal(d.applyMatchScore, 'MEDIUM');
+  assert.deepEqual(d.matching, { Experience: { userMatching: true } });
 });
 
 test('formKey discovery helpers', () => {

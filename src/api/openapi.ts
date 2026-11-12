@@ -287,6 +287,18 @@ export const openApiSpec = {
         responses: { '200': json({ type: 'array', items: ref('ApplicationHistory') }), ...commonErrors },
       },
     },
+    '/api/applications/{jobId}': {
+      get: {
+        tags: ['Profile'],
+        summary: 'Application detail',
+        description: 'Status timeline plus how you compare with other applicants (history-description).',
+        parameters: [
+          { name: 'jobId', in: 'path', required: true, schema: { type: 'string', pattern: '^\\d+$' } },
+          q('applyType', { type: 'string', default: 'normal' }, 'Apply type from the history list (`normal`, `BROADCAST`...).'),
+        ],
+        responses: { '200': json(ref('ApplicationDetail')), ...commonErrors },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -424,6 +436,19 @@ export const openApiSpec = {
           },
           result: { type: 'object', additionalProperties: true, description: "Naukri's apply response." },
         },
+      },
+      ApplicationDetail: {
+        allOf: [
+          ref('ApplicationHistory'),
+          {
+            type: 'object',
+            properties: {
+              totalApplicants: { type: 'integer' },
+              applyMatchScore: { type: ['string', 'null'], description: 'e.g. LOW / MEDIUM / HIGH.' },
+              matching: { type: 'object', additionalProperties: true, description: 'Industry, experience, location... vs other applicants.' },
+            },
+          },
+        ],
       },
       ApplicationHistory: {
         type: 'object',
