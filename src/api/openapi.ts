@@ -116,6 +116,33 @@ const gulfPaths = {
   '/api/gulf/jobs/{jobId}': {
     get: { tags: ['NaukriGulf · Jobs'], summary: 'Job details', parameters: [gulfJobId], responses: { '200': raw("NaukriGulf's raw job details."), ...gulfErrors } },
   },
+  '/api/gulf/jobs/{jobId}/apply': {
+    post: {
+      tags: ['NaukriGulf · Jobs'],
+      summary: 'Easy-apply to a job',
+      description:
+        'Submits a real application. Already-applied jobs return `applied: true` without a request. A 400 from NaukriGulf (questionnaire or profile gap) returns `applied: false` with its `layerCode`. Request shape is copied from the site and not yet verified live.',
+      parameters: [gulfJobId],
+      requestBody: {
+        required: false,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { xz: { type: 'string', description: '`xz` from the search response that listed the job.' }, source: { type: 'string', default: 'self' } },
+            },
+          },
+        },
+      },
+      responses: {
+        '200': json({
+          type: 'object',
+          properties: { applied: { type: 'boolean' }, alreadyApplied: { type: 'boolean' }, status: { type: 'integer' }, layerCode: { type: ['integer', 'null'] }, result: { type: 'object', additionalProperties: true } },
+        }),
+        ...gulfErrors,
+      },
+    },
+  },
 };
 
 export const openApiSpec = {

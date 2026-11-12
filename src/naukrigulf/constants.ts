@@ -7,6 +7,7 @@ export const URLS = {
   cvAttachment: `${BASE}/ngprofile/user/self/cvAttachment`,
   search: `${BASE}/spapi/jobapi/search`,
   recommended: `${BASE}/spapi/jobapi/userjobrecommendations/aggregated`,
+  apply: `${BASE}/spapply/jobapplier/apply/v2`,
   job: (jobId: string) => `${BASE}/spapi/jobs/${encodeURIComponent(jobId)}`,
 } as const;
 

@@ -10,6 +10,7 @@ const Search = z.object({
   resultsPerPage: z.coerce.number().int().min(1).max(100).optional(),
 });
 const JobId = z.string().regex(/^\d+$/, 'jobId must be numeric');
+const Apply = z.object({ xz: z.string().optional(), source: z.string().regex(/^\w+$/).optional() }).default({});
 const Section = z.string().regex(/^\w+$/, 'invalid section name');
 const ProfileUpdate = z
   .object({ headline: z.string().trim().min(1).max(250), summary: z.string().trim().min(1).max(1000) })
@@ -33,5 +34,8 @@ export function gulfRoutes({ auth, jobs, profile }: Pick<GulfClient, 'auth' | 'j
     .get('/profile/sections/:section', async (req, res) => void res.json(await profile.section(Section.parse(req.params.section))))
     .get('/jobs/recommended', async (_req, res) => void res.json(await jobs.recommended()))
     .get('/jobs/search', async (req, res) => void res.json(await jobs.search(Search.parse(req.query))))
+    .post('/jobs/:jobId/apply', async (req, res) => {
+      res.json(await jobs.apply({ jobId: JobId.parse(req.params.jobId), ...Apply.parse(req.body) }));
+    })
     .get('/jobs/:jobId', async (req, res) => void res.json(await jobs.details(JobId.parse(req.params.jobId))));
 }
