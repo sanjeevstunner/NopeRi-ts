@@ -55,11 +55,39 @@ const gulfPaths = {
     post: { tags: ['NaukriGulf · Auth'], summary: 'Log in to NaukriGulf with the configured credentials', responses: { '200': json(ref('AuthStatus')), ...gulfErrors } },
   },
   '/api/gulf/profile': {
+    get: { tags: ['NaukriGulf · Profile'], summary: 'Full profile', responses: { '200': raw("NaukriGulf's full profile (`fullProfile.myCV`)."), ...gulfErrors } },
+    patch: {
+      tags: ['NaukriGulf · Profile'],
+      summary: 'Update CV headline and/or summary',
+      description: 'Request body is modelled on the read shape and not yet verified against a live write.',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              minProperties: 1,
+              properties: { headline: { type: 'string', maxLength: 250 }, summary: { type: 'string', maxLength: 1000 } },
+            },
+          },
+        },
+      },
+      responses: { '200': raw("NaukriGulf's responses, keyed by field."), ...gulfErrors },
+    },
+  },
+  '/api/gulf/profile/sections/{section}': {
     get: {
       tags: ['NaukriGulf · Profile'],
-      summary: 'Profile section',
-      parameters: [q('section', { type: 'string', default: 'mnjWidget', pattern: '^\\w+$' }, 'Profile section name.')],
-      responses: { '200': raw("NaukriGulf's profile JSON."), ...gulfErrors },
+      summary: 'One profile section',
+      parameters: [{ name: 'section', in: 'path', required: true, schema: { type: 'string', pattern: '^\\w+$' }, description: 'e.g. cvHeadline, profileSummary, cvMetadata, basicDetails, mnjWidget.', example: 'cvHeadline' }],
+      responses: { '200': raw("NaukriGulf's section JSON."), ...gulfErrors },
+    },
+  },
+  '/api/gulf/profile/resume': {
+    get: {
+      tags: ['NaukriGulf · Profile'],
+      summary: 'Download the attached CV',
+      responses: { '200': { description: 'The CV PDF.', content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } } }, ...gulfErrors },
     },
   },
   '/api/gulf/jobs/recommended': {

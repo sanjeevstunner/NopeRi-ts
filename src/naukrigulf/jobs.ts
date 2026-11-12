@@ -52,10 +52,4 @@ export class GulfJobs {
     });
     return readJson(res, 'Job details');
   }
-
-  /** One section of the logged-in user's profile, e.g. `mnjWidget`. */
-  async profile(section: string) {
-    const res = await this.#http.get(URLS.profile, { headers: await this.#auth.authHeaders(), params: { section } });
-    return readJson(res, 'Fetch profile');
-  }
 }

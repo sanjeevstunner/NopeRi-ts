@@ -11,7 +11,7 @@ import { profileRoutes } from './routes/profile.ts';
 
 export type Services = Pick<NaukriClient, 'auth' | 'profile' | 'jobs'>;
 
-export function createApp({ auth, profile, jobs }: Services, apiKey: string, gulf?: Pick<GulfClient, 'auth' | 'jobs'>) {
+export function createApp({ auth, profile, jobs }: Services, apiKey: string, gulf?: Pick<GulfClient, 'auth' | 'jobs' | 'profile'>) {
   return express()
     .disable('x-powered-by')
     .use(express.json({ limit: '100kb' }))

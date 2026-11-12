@@ -113,9 +113,12 @@ Set `NAUKRIGULF_USERNAME` and `NAUKRIGULF_PASSWORD` to enable `/api/gulf/*` (sam
 | GET | `/api/gulf/auth/status`, POST `/api/gulf/auth/login` | Cookie session |
 | GET | `/api/gulf/jobs/search` | `?keyword` (required) `&location&page&experience&resultsPerPage`, no login needed |
 | GET | `/api/gulf/jobs/recommended`, `/api/gulf/jobs/:jobId` | Raw NaukriGulf JSON for now |
-| GET | `/api/gulf/profile` | `?section=mnjWidget` |
+| GET | `/api/gulf/profile` | Full profile (`fullProfile.myCV`) |
+| GET | `/api/gulf/profile/sections/:section` | e.g. `cvHeadline`, `profileSummary`, `cvMetadata` |
+| PATCH | `/api/gulf/profile` | `{ headline?, summary? }`; body shape not yet verified live |
+| GET | `/api/gulf/profile/resume` | Downloads the attached CV PDF |
 
-Not yet ported: apply, resume, application history (endpoints still to capture).
+Not yet ported: apply, CV upload, application history (endpoints still to capture).
 
 ## Library use
 
