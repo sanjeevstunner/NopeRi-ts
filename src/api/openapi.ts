@@ -42,6 +42,54 @@ const q = (name: string, schema: Record<string, unknown>, description: string, e
   ...extra,
 });
 
+const gulfJobId = { ...jobIdParam, description: 'Numeric NaukriGulf job ID.', example: '111126000452' };
+const raw = (d: string) => json({ type: 'object', additionalProperties: true }, d);
+const gulfErrors = { '400': commonErrors['400'], '401': commonErrors['401'], '502': commonErrors['502'] };
+
+/** NaukriGulf routes (enabled when NAUKRIGULF_USERNAME / NAUKRIGULF_PASSWORD are set; 404 otherwise). */
+const gulfPaths = {
+  '/api/gulf/auth/status': {
+    get: { tags: ['NaukriGulf · Auth'], summary: 'NaukriGulf session status', responses: { '200': json(ref('AuthStatus')), '401': commonErrors['401'] } },
+  },
+  '/api/gulf/auth/login': {
+    post: { tags: ['NaukriGulf · Auth'], summary: 'Log in to NaukriGulf with the configured credentials', responses: { '200': json(ref('AuthStatus')), ...gulfErrors } },
+  },
+  '/api/gulf/profile': {
+    get: {
+      tags: ['NaukriGulf · Profile'],
+      summary: 'Profile section',
+      parameters: [q('section', { type: 'string', default: 'mnjWidget', pattern: '^\\w+$' }, 'Profile section name.')],
+      responses: { '200': raw("NaukriGulf's profile JSON."), ...gulfErrors },
+    },
+  },
+  '/api/gulf/jobs/recommended': {
+    get: { tags: ['NaukriGulf · Jobs'], summary: 'Recommended jobs', responses: { '200': raw("NaukriGulf's raw recommendations."), ...gulfErrors } },
+  },
+  '/api/gulf/jobs/search': {
+    get: {
+      tags: ['NaukriGulf · Jobs'],
+      summary: 'Search jobs (no login needed)',
+      parameters: [
+        { name: 'keyword', in: 'query', required: true, schema: { type: 'string', minLength: 1 }, example: 'python' },
+        q('location', { type: 'string' }, 'City or country.', { example: 'dubai' }),
+        q('page', { type: 'integer', minimum: 1 }, 'Page number, starting at 1.'),
+        q('experience', { type: 'integer', minimum: 0, maximum: 50 }, 'Years of experience.'),
+        q('resultsPerPage', { type: 'integer', minimum: 1, maximum: 100, default: 30 }, 'Page size.'),
+      ],
+      responses: {
+        '200': json({
+          type: 'object',
+          properties: { jobs: { type: 'array', items: ref('Job') }, total: { type: 'integer' }, searchId: { type: ['string', 'null'] } },
+        }),
+        ...gulfErrors,
+      },
+    },
+  },
+  '/api/gulf/jobs/{jobId}': {
+    get: { tags: ['NaukriGulf · Jobs'], summary: 'Job details', parameters: [gulfJobId], responses: { '200': raw("NaukriGulf's raw job details."), ...gulfErrors } },
+  },
+};
+
 export const openApiSpec = {
   openapi: '3.1.0',
   info: {
@@ -53,13 +101,23 @@ export const openApiSpec = {
   },
   servers: [{ url: '/', description: 'This server' }],
   tags: [
-    { name: 'Auth', description: 'Naukri session' },
-    { name: 'Jobs', description: 'Find and apply to jobs' },
-    { name: 'Profile', description: 'Profile, resume and applications' },
     { name: 'System' },
+    { name: 'Naukri · Auth', description: 'Naukri.com session' },
+    { name: 'Naukri · Jobs', description: 'Find and apply to Naukri jobs' },
+    { name: 'Naukri · Profile', description: 'Naukri profile, resume and applications' },
+    { name: 'NaukriGulf · Auth', description: 'NaukriGulf session (`/api/gulf`, needs NAUKRIGULF_* in .env)' },
+    { name: 'NaukriGulf · Jobs', description: 'Search and read NaukriGulf jobs' },
+    { name: 'NaukriGulf · Profile', description: 'NaukriGulf profile' },
+  ],
+  // Grouping for Redoc-style viewers; Swagger UI ignores it and shows the "Site · Section" tag names in this order.
+  'x-tagGroups': [
+    { name: 'System', tags: ['System'] },
+    { name: 'Naukri', tags: ['Naukri · Auth', 'Naukri · Jobs', 'Naukri · Profile'] },
+    { name: 'NaukriGulf', tags: ['NaukriGulf · Auth', 'NaukriGulf · Jobs', 'NaukriGulf · Profile'] },
   ],
   security: [{ ApiKeyHeader: [] }, { BearerAuth: [] }],
   paths: {
+    ...gulfPaths,
     '/health': {
       get: {
         tags: ['System'],
@@ -72,21 +130,21 @@ export const openApiSpec = {
     },
     '/api/auth/status': {
       get: {
-        tags: ['Auth'],
+        tags: ['Naukri · Auth'],
         summary: 'Session status',
         responses: { '200': json(ref('AuthStatus')), '401': commonErrors['401'] },
       },
     },
     '/api/auth/login': {
       post: {
-        tags: ['Auth'],
+        tags: ['Naukri · Auth'],
         summary: 'Log in with the configured credentials',
         responses: { '200': json(ref('AuthStatus')), '401': commonErrors['401'], '502': commonErrors['502'] },
       },
     },
     '/api/auth/token': {
       post: {
-        tags: ['Auth'],
+        tags: ['Naukri · Auth'],
         summary: 'Use an existing Naukri token',
         requestBody: {
           required: true,
@@ -105,7 +163,7 @@ export const openApiSpec = {
     },
     '/api/auth/otp/send': {
       post: {
-        tags: ['Auth'],
+        tags: ['Naukri · Auth'],
         summary: 'Send a login OTP',
         requestBody: {
           required: false,
@@ -121,7 +179,7 @@ export const openApiSpec = {
     },
     '/api/auth/otp/verify': {
       post: {
-        tags: ['Auth'],
+        tags: ['Naukri · Auth'],
         summary: 'Verify an OTP and log in',
         requestBody: {
           required: true,
@@ -132,14 +190,14 @@ export const openApiSpec = {
     },
     '/api/jobs/recommended': {
       get: {
-        tags: ['Jobs'],
+        tags: ['Naukri · Jobs'],
         summary: 'Recommended jobs',
         responses: { '200': json({ type: 'array', items: ref('Job') }), '401': commonErrors['401'], '502': commonErrors['502'] },
       },
     },
     '/api/jobs/search': {
       get: {
-        tags: ['Jobs'],
+        tags: ['Naukri · Jobs'],
         summary: 'Search jobs',
         parameters: [
           q('keyword', { type: 'string', minLength: 1 }, 'Search text.', { required: true, example: 'node.js developer' }),
@@ -161,7 +219,7 @@ export const openApiSpec = {
     },
     '/api/jobs/{jobId}': {
       get: {
-        tags: ['Jobs'],
+        tags: ['Naukri · Jobs'],
         summary: 'Job details',
         parameters: [jobIdParam, sidParam],
         responses: { '200': json(ref('JobDetails')), ...commonErrors },
@@ -169,7 +227,7 @@ export const openApiSpec = {
     },
     '/api/jobs/{jobId}/apply': {
       post: {
-        tags: ['Jobs'],
+        tags: ['Naukri · Jobs'],
         summary: 'Apply to a job',
         description:
           'If the job has a questionnaire, the response has `questionnaireRequired: true`; apply again with the same `sid` and the answers in `answers`, leaving out `skippable` questions. `applied: true` is Naukri\'s confirmation.\n\n' +
@@ -200,7 +258,7 @@ export const openApiSpec = {
     },
     '/api/profile/id': {
       get: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Profile ID',
         responses: {
           '200': json({ type: 'object', properties: { profileId: { type: 'string' } } }),
@@ -211,7 +269,7 @@ export const openApiSpec = {
     },
     '/api/profile': {
       get: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Full profile',
         description: "Naukri's profile response as-is: `user`, `profile` (incl. `cvInfo`), `employments`, `educations`, `itskills`, `projects`, `certifications` and more.",
         responses: {
@@ -221,7 +279,7 @@ export const openApiSpec = {
         },
       },
       patch: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Update headline, name or summary',
         requestBody: {
           required: true,
@@ -244,7 +302,7 @@ export const openApiSpec = {
     },
     '/api/profile/resume': {
       get: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Download the current resume',
         responses: {
           '200': { description: 'The PDF, with its Naukri filename in Content-Disposition.', content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } } },
@@ -253,7 +311,7 @@ export const openApiSpec = {
         },
       },
       put: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Upload a resume',
         requestBody: {
           required: true,
@@ -276,7 +334,7 @@ export const openApiSpec = {
     },
     '/api/applications': {
       get: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Application history',
         parameters: [
           q('pageSize', { type: 'integer', minimum: 1, maximum: 100 }, 'Page size.'),
@@ -289,7 +347,7 @@ export const openApiSpec = {
     },
     '/api/applications/{jobId}': {
       get: {
-        tags: ['Profile'],
+        tags: ['Naukri · Profile'],
         summary: 'Application detail',
         description: 'Status timeline plus how you compare with other applicants (history-description).',
         parameters: [

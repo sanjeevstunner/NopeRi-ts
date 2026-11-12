@@ -104,6 +104,19 @@ curl -X PUT -H "x-api-key: $API_KEY" -F "resume=@resume.pdf;type=application/pdf
 
 From a browser, append the file to a `FormData` under `resume` and send it with `fetch(url, { method: 'PUT', body: form })`. Don't set `Content-Type` yourself, because the browser has to add the multipart boundary. A browser app on a different origin also needs CORS, which isn't enabled yet. Calling it from your own backend avoids CORS and keeps the API key out of the browser.
 
+## NaukriGulf (optional)
+
+Set `NAUKRIGULF_USERNAME` and `NAUKRIGULF_PASSWORD` to enable `/api/gulf/*` (same API key). Code is in `src/naukrigulf/`, sharing the HTTP session and error types with the Naukri client.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/gulf/auth/status`, POST `/api/gulf/auth/login` | Cookie session |
+| GET | `/api/gulf/jobs/search` | `?keyword` (required) `&location&page&experience&resultsPerPage`, no login needed |
+| GET | `/api/gulf/jobs/recommended`, `/api/gulf/jobs/:jobId` | Raw NaukriGulf JSON for now |
+| GET | `/api/gulf/profile` | `?section=mnjWidget` |
+
+Not yet ported: apply, resume, application history (endpoints still to capture).
+
 ## Library use
 
 ```ts
