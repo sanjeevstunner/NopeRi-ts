@@ -2,10 +2,10 @@ import { compact, ensureOk, readJson, type Http } from '../naukri/http.ts';
 import { NaukriUpstreamError } from '../naukri/errors.ts';
 import type { Job, SearchParams } from '../naukri/types.ts';
 import type { GulfAuth } from './auth.ts';
-import { HEADERS, URLS } from './constants.ts';
-import { parseJob } from './parsers.ts';
+import { FILTER_PARAMS, HEADERS, URLS } from './constants.ts';
+import { parseJob, pickClusters } from './parsers.ts';
 
-export type GulfSearchParams = Pick<SearchParams, 'keyword' | 'location' | 'page' | 'experience' | 'resultsPerPage'>;
+export type GulfSearchParams = Pick<SearchParams, 'keyword' | 'location' | 'page' | 'experience' | 'resultsPerPage' | 'filters'>;
 
 /** Job search (public), recommendations and details. */
 export class GulfJobs {
@@ -17,10 +17,15 @@ export class GulfJobs {
     this.#auth = auth;
   }
 
-  async search({ keyword, location = '', page = 1, experience, resultsPerPage = 30 }: GulfSearchParams) {
+  async search({ keyword, location = '', page = 1, experience, resultsPerPage = 30, filters = {} }: GulfSearchParams) {
+    const clusterParams = Object.fromEntries(
+      Object.entries(filters).flatMap(([key, ids]) => (FILTER_PARAMS[key] && ids.length ? [[FILTER_PARAMS[key], ids.join(',')]] : [])),
+    );
     const res = await this.#http.get(URLS.search, {
       headers: HEADERS,
       params: compact({
+        ...clusterParams,
+        clusterSelected: Object.keys(clusterParams).length ? 1 : undefined,
         Keywords: keyword,
         Location: location,
         Experience: experience,
@@ -32,17 +37,18 @@ export class GulfJobs {
     });
     const data = readJson(res, 'Job search');
     const jobs: Job[] = (data.Jobs ?? []).map(parseJob);
-    return { jobs, total: Number(data.TotalJobsCount) || jobs.length, searchId: data.srchId ?? null };
+    return { jobs, total: Number(data.TotalJobsCount) || jobs.length, searchId: data.srchId ?? null, clusters: pickClusters(data.Clusters) };
   }
 
+  /** Recommendations from every group (`apply`, `profile`, `JASP`, `jobalert`), de-duplicated by jobId. */
   async recommended(): Promise<Job[]> {
     const res = await this.#http.get(URLS.recommended, {
       headers: await this.#auth.authHeaders(),
       params: { applyFilter: false, jobTypeList: 'JASP', tabs: 'all' },
     });
     const data = readJson(res, 'Recommended jobs');
-    // ponytail: response shape not mapped yet; surface raw until a sample with jobs is captured
-    return data;
+    const all: Job[] = (data.recommendation ?? []).flatMap((group: any) => (group.jobs ?? []).map(parseJob));
+    return [...new Map(all.map((j) => [j.jobId, j])).values()];
   }
 
   /** Raw job details as NaukriGulf returns them. */

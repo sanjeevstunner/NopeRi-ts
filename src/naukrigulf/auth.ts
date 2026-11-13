@@ -29,6 +29,12 @@ export class GulfAuth {
     this.#loginTime = new Date();
   }
 
+  /** Adopts the `AT` cookie (httpOnly JWT) copied from a logged-in browser, e.g. when the password login is blocked. */
+  useToken(token: string): void {
+    this.#http.setCookie('AT', token, { domain: '.naukrigulf.com', path: '/', secure: true });
+    this.#loginTime = new Date();
+  }
+
   /** Common headers, logging in first if needed. */
   async authHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
     if (!this.#loginTime) {
