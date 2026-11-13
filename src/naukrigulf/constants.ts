@@ -1,4 +1,4 @@
-const BASE = 'https://www.naukrigulf.com';
+export const BASE = 'https://www.naukrigulf.com';
 
 export const URLS = {
   login: `${BASE}/nglogin/user/login`,
@@ -12,6 +12,17 @@ export const URLS = {
   apply: `${BASE}/spapply/jobapplier/apply/v2`,
   job: (jobId: string) => `${BASE}/spapi/jobs/${encodeURIComponent(jobId)}`,
 } as const;
+
+/** Search cluster key (as returned in `Clusters`) → the query param NaukriGulf filters on; several ids go comma-joined. Each verified live against cluster counts; titles, functionalArea, companyType, webJob, nationalityCluster, companyProfileId left out (params unknown). */
+export const FILTER_PARAMS: Record<string, string> = {
+  country: 'ClusterCountry',
+  citysrp: 'ClusterCity',
+  experience: 'ClusterExperience',
+  gender: 'ClusterGender',
+  ctc: 'ClusterCTC',
+  industryType: 'ClusterInd',
+  freshness: 'Freshness',
+};
 
 /** Headers the NaukriGulf web app sends (appid 205 = desktop). Auth is cookie-based, so no bearer token. */
 export const HEADERS: Record<string, string> = {

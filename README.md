@@ -111,9 +111,11 @@ Set `NAUKRIGULF_USERNAME` and `NAUKRIGULF_PASSWORD` to enable `/api/gulf/*` (sam
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/gulf/auth/status`, POST `/api/gulf/auth/login` | Cookie session |
-| GET | `/api/gulf/jobs/search` | `?keyword` (required) `&location&page&experience&resultsPerPage`, no login needed |
+| POST | `/api/gulf/auth/token` | `{ token }`: the httpOnly `AT` cookie from a logged-in browser (DevTools → Application → Cookies) |
+| GET | `/api/gulf/jobs/search` | `?keyword` (required) `&location&page&experience&resultsPerPage&filter.<key>`, no login needed. Returns `clusters` (country, citysrp, experience, gender, ctc, industryType, freshness); repeat `filter.<key>=<id>` to select several |
 | POST | `/api/gulf/jobs/:jobId/apply` | `{ xz?, source? }`; submits a real application. Payload copied from the site's JS, not yet verified live |
-| GET | `/api/gulf/jobs/recommended`, `/api/gulf/jobs/:jobId` | Raw NaukriGulf JSON for now |
+| GET | `/api/gulf/jobs/recommended` | Mapped `Job[]` from all recommendation groups, de-duplicated |
+| GET | `/api/gulf/jobs/:jobId` | Raw NaukriGulf JSON for now |
 | GET | `/api/gulf/profile` | Full profile (`fullProfile.myCV`) |
 | GET | `/api/gulf/profile/sections/:section` | e.g. `cvHeadline`, `profileSummary`, `cvMetadata` |
 | PATCH | `/api/gulf/profile` | `{ headline?, summary? }`; body shape not yet verified live |

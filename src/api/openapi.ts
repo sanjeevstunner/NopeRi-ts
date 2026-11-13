@@ -1,4 +1,5 @@
 import { FILTER_PARAMS } from '../naukri/constants.ts';
+import { FILTER_PARAMS as GULF_FILTER_PARAMS } from '../naukrigulf/constants.ts';
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 
 const errorResponse = (description: string, code: string, message: string) => ({
@@ -54,6 +55,25 @@ const gulfPaths = {
   '/api/gulf/auth/login': {
     post: { tags: ['NaukriGulf · Auth'], summary: 'Log in to NaukriGulf with the configured credentials', responses: { '200': json(ref('AuthStatus')), ...gulfErrors } },
   },
+  '/api/gulf/auth/token': {
+    post: {
+      tags: ['NaukriGulf · Auth'],
+      summary: 'Use an existing NaukriGulf token',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['token'],
+              properties: { token: { type: 'string', minLength: 20, description: 'NaukriGulf access token (httpOnly `AT` cookie).' } },
+            },
+          },
+        },
+      },
+      responses: { '200': json(ref('AuthStatus')), '400': commonErrors['400'], '401': commonErrors['401'] },
+    },
+  },
   '/api/gulf/profile': {
     get: { tags: ['NaukriGulf · Profile'], summary: 'Full profile', responses: { '200': raw("NaukriGulf's full profile (`fullProfile.myCV`)."), ...gulfErrors } },
     patch: {
@@ -103,7 +123,7 @@ const gulfPaths = {
     },
   },
   '/api/gulf/jobs/recommended': {
-    get: { tags: ['NaukriGulf · Jobs'], summary: 'Recommended jobs', responses: { '200': raw("NaukriGulf's raw recommendations."), ...gulfErrors } },
+    get: { tags: ['NaukriGulf · Jobs'], summary: 'Recommended jobs (all groups, de-duplicated)', responses: { '200': json({ type: 'array', items: ref('Job') }), ...gulfErrors } },
   },
   '/api/gulf/jobs/search': {
     get: {
@@ -115,11 +135,26 @@ const gulfPaths = {
         q('page', { type: 'integer', minimum: 1 }, 'Page number, starting at 1.'),
         q('experience', { type: 'integer', minimum: 0, maximum: 50 }, 'Years of experience.'),
         q('resultsPerPage', { type: 'integer', minimum: 1, maximum: 100, default: 30 }, 'Page size.'),
+        ...Object.keys(GULF_FILTER_PARAMS).map((key) =>
+          q(`filter.${key}`, { type: 'array', items: { type: 'string' } }, `Filter by \`clusters.${key}\` ids. Repeat to select several.`, {
+            style: 'form',
+            explode: true,
+          }),
+        ),
       ],
       responses: {
         '200': json({
           type: 'object',
-          properties: { jobs: { type: 'array', items: ref('Job') }, total: { type: 'integer' }, searchId: { type: ['string', 'null'] } },
+          properties: {
+            jobs: { type: 'array', items: ref('Job') },
+            total: { type: 'integer' },
+            searchId: { type: ['string', 'null'] },
+            clusters: {
+              type: 'object',
+              description: 'Filter groups keyed by cluster key; send ids back as `filter.<key>`.',
+              additionalProperties: { type: 'array', items: ref('Cluster') },
+            },
+          },
         }),
         ...gulfErrors,
       },

@@ -19,7 +19,7 @@ const Search = z.object({
 });
 
 /** `filter.wfhType=2&filter.wfhType=3` → `{ filters: { wfhType: ['2','3'] } }`; other params pass through. */
-function searchQuery(query: Record<string, unknown>) {
+export function searchQuery(query: Record<string, unknown>) {
   const filters: Record<string, string[]> = {};
   const rest: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(query)) {
