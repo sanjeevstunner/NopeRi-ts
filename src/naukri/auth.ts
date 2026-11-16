@@ -1,10 +1,8 @@
 import { TokenAuth, type Credentials } from '../common/tokenAuth.ts';
 import { HEADERS, URLS } from './constants.ts';
-import { NaukriAuthError } from './errors.ts';
-import type { Http } from './http.ts';
+import { NaukriAuthError } from '../common/errors.ts';
+import type { Http } from '../common/http.ts';
 import { generateVid } from './vid.ts';
-
-export type { Credentials };
 
 /** `nauk_at`: a ~1h JWT. */
 const TOKEN_COOKIE = 'nauk_at';

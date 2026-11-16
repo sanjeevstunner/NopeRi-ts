@@ -1,27 +1,20 @@
-import { compact, ensureOk, readJson, type Http } from '../naukri/http.ts';
-import { NaukriUpstreamError } from '../naukri/errors.ts';
-import type { Job, SearchParams } from '../naukri/types.ts';
+import { SiteService } from '../common/service.ts';
+import { compact, ensureOk, readJson } from '../common/http.ts';
+import { NaukriUpstreamError } from '../common/errors.ts';
+import type { BaseSearchParams, Job } from '../common/types.ts';
 import type { GulfAuth } from './auth.ts';
 import { FILTER_PARAMS, HEADERS, URLS } from './constants.ts';
 import { parseJob, pickClusters } from './parsers.ts';
 
-export type GulfSearchParams = Pick<SearchParams, 'keyword' | 'location' | 'page' | 'experience' | 'resultsPerPage' | 'filters'>;
+export type GulfSearchParams = BaseSearchParams;
 
 /** Job search (public), recommendations and details. */
-export class GulfJobs {
-  readonly #http: Http;
-  readonly #auth: GulfAuth;
-
-  constructor(http: Http, auth: GulfAuth) {
-    this.#http = http;
-    this.#auth = auth;
-  }
-
+export class GulfJobs extends SiteService<GulfAuth> {
   async search({ keyword, location = '', page = 1, experience, resultsPerPage = 30, filters = {} }: GulfSearchParams) {
     const clusterParams = Object.fromEntries(
       Object.entries(filters).flatMap(([key, ids]) => (FILTER_PARAMS[key] && ids.length ? [[FILTER_PARAMS[key], ids.join(',')]] : [])),
     );
-    const res = await this.#http.get(URLS.search, {
+    const res = await this.http.get(URLS.search, {
       headers: HEADERS,
       params: compact({
         ...clusterParams,
@@ -42,8 +35,8 @@ export class GulfJobs {
 
   /** Recommendations from every group (`apply`, `profile`, `JASP`, `jobalert`), de-duplicated by jobId. */
   async recommended(): Promise<Job[]> {
-    const res = await this.#http.get(URLS.recommended, {
-      headers: await this.#auth.authHeaders(),
+    const res = await this.http.get(URLS.recommended, {
+      headers: await this.auth.authHeaders(),
       params: { applyFilter: false, jobTypeList: 'JASP', tabs: 'all' },
     });
     const data = readJson(res, 'Recommended jobs');
@@ -53,8 +46,8 @@ export class GulfJobs {
 
   /** Raw job details as NaukriGulf returns them. */
   async details(jobId: string) {
-    const res = await this.#http.get(URLS.job(jobId), {
-      headers: await this.#auth.authHeaders(),
+    const res = await this.http.get(URLS.job(jobId), {
+      headers: await this.auth.authHeaders(),
       params: { seo: 1, nationality: '', xz: '', source: 'self' },
     });
     return readJson(res, 'Job details');
@@ -70,8 +63,8 @@ export class GulfJobs {
     const job = (await this.details(jobId))?.Job;
     if (!job) throw new NaukriUpstreamError('Job details response has no Job');
     if (job.Other?.IsApplied === 'true' || job.Other?.IsApplied === true) return { applied: true, alreadyApplied: true };
-    const res = await this.#http.post(URLS.apply, {
-      headers: await this.#auth.authHeaders(),
+    const res = await this.http.post(URLS.apply, {
+      headers: await this.auth.authHeaders(),
       params: { locationId: '', nationality: '' },
       json: {
         xz,

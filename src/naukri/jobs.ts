@@ -1,24 +1,18 @@
+import { pickClusters as pickBy } from '../common/clusters.ts';
+import { SiteService } from '../common/service.ts';
 import type { NaukriAuth } from './auth.ts';
 import { APPLY_SOURCES, FILTER_PARAMS, HEADERS, URLS } from './constants.ts';
-import { NaukriAuthError, NaukriUpstreamError } from './errors.ts';
-import { compact, readJson, type Http } from './http.ts';
+import { NaukriAuthError, NaukriUpstreamError } from '../common/errors.ts';
+import { compact, readJson } from '../common/http.ts';
 import { buildSeoKey, generateNkparam, newSid, parseJob, parseQuestionnaire, parseSkills } from './parsers.ts';
 import type { ApplyParams, Cluster, Job, SearchParams, SearchResult } from './types.ts';
 
 /** Job search, recommendations, details and apply. */
-export class NaukriJobs {
-  readonly #http: Http;
-  readonly #auth: NaukriAuth;
-
-  constructor(http: Http, auth: NaukriAuth) {
-    this.#http = http;
-    this.#auth = auth;
-  }
-
+export class NaukriJobs extends SiteService<NaukriAuth> {
   async recommended(): Promise<Job[]> {
     const now = new Date().toISOString();
-    const res = await this.#http.post(URLS.recommended, {
-      headers: await this.#auth.authHeaders(),
+    const res = await this.http.post(URLS.recommended, {
+      headers: await this.auth.authHeaders(),
       json: {
         clusterId: null,
         src: 'recommClusterApi',
@@ -41,7 +35,7 @@ export class NaukriJobs {
     filters = {},
   }: SearchParams): Promise<SearchResult> {
     const fq = filterQuery(filters);
-    const res = await this.#http.get(fq ? `${URLS.search}?${fq}` : URLS.search, {
+    const res = await this.http.get(fq ? `${URLS.search}?${fq}` : URLS.search, {
       headers: {
         ...HEADERS.base,
         'accept-language': 'en-US,en;q=0.9',
@@ -80,8 +74,8 @@ export class NaukriJobs {
 
   /** Raw job details plus whether applying redirects to the company's own site. */
   async details(jobId: string, sid = newSid()) {
-    const res = await this.#http.get(URLS.jobDetails(jobId), {
-      headers: await this.#auth.authHeaders({
+    const res = await this.http.get(URLS.jobDetails(jobId), {
+      headers: await this.auth.authHeaders({
         ...HEADERS.jobApi,
         gid: 'LOCATION,INDUSTRY,EDUCATION,FAREA_ROLE',
         'sec-fetch-site': 'same-origin',
@@ -106,8 +100,8 @@ export class NaukriJobs {
    */
   async apply({ jobId, mandatorySkills = [], optionalSkills = [], sid = newSid(), source = 'recommended', answers }: ApplyParams) {
     const { applySrc, logstr } = APPLY_SOURCES[source];
-    const res = await this.#http.post(URLS.apply, {
-      headers: await this.#auth.authHeaders({ ...HEADERS.jobApi, systemid: 'jobseeker' }),
+    const res = await this.http.post(URLS.apply, {
+      headers: await this.auth.authHeaders({ ...HEADERS.jobApi, systemid: 'jobseeker' }),
       json: {
         strJobsarr: [jobId],
         logstr: logstr(sid),
@@ -147,13 +141,5 @@ export function filterQuery(filters: Record<string, string[]>): string {
   return q.toString();
 }
 
-/** Keeps only the filter groups we can send back, as clean `{id,count,label}` lists. */
-export function pickClusters(raw: unknown): Record<string, Cluster[]> {
-  if (!raw || typeof raw !== 'object') return {};
-  const out: Record<string, Cluster[]> = {};
-  for (const [key, list] of Object.entries(raw)) {
-    if (!(key in FILTER_PARAMS) || !Array.isArray(list) || !list.length) continue;
-    out[key] = list.map((c) => ({ id: String(c.id), count: Number(c.count) || 0, label: String(c.label) }));
-  }
-  return out;
-}
+/** Naukri clusters carry their id in `id`. */
+export const pickClusters = (raw: unknown): Record<string, Cluster[]> => pickBy(raw, FILTER_PARAMS, (c) => c.id);

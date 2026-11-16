@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ClientOptions } from './common/client.ts';
 
 const optional = <T extends z.ZodType>(schema: T) => z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
 
@@ -16,21 +17,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const parsed = EnvSchema.safeParse(env);
   if (!parsed.success) throw new Error(`Invalid configuration (check .env):\n${z.prettifyError(parsed.error)}`);
   const e = parsed.data;
-  if (!(e.NAUKRI_USERNAME && e.NAUKRI_PASSWORD) && !(e.NAUKRIGULF_USERNAME && e.NAUKRIGULF_PASSWORD))
+  // Each site is enabled only when both its credentials are set. Both share the outbound proxy.
+  const site = (username?: string, password?: string): ClientOptions | undefined =>
+    username && password ? { username, password, proxy: e.NAUKRI_PROXY } : undefined;
+  const naukri = site(e.NAUKRI_USERNAME, e.NAUKRI_PASSWORD);
+  const gulf = site(e.NAUKRIGULF_USERNAME, e.NAUKRIGULF_PASSWORD);
+  if (!naukri && !gulf)
     throw new Error('Invalid configuration (check .env):\nSet NAUKRI_USERNAME/NAUKRI_PASSWORD and/or NAUKRIGULF_USERNAME/NAUKRIGULF_PASSWORD');
-  return {
-    port: e.PORT,
-    apiKey: e.API_KEY,
-    // Each service is enabled only when both its credentials are set.
-    naukri:
-      e.NAUKRI_USERNAME && e.NAUKRI_PASSWORD
-        ? { username: e.NAUKRI_USERNAME, password: e.NAUKRI_PASSWORD, proxy: e.NAUKRI_PROXY }
-        : undefined,
-    gulf:
-      e.NAUKRIGULF_USERNAME && e.NAUKRIGULF_PASSWORD
-        ? { username: e.NAUKRIGULF_USERNAME, password: e.NAUKRIGULF_PASSWORD, proxy: e.NAUKRI_PROXY }
-        : undefined,
-  };
+  return { port: e.PORT, apiKey: e.API_KEY, naukri, gulf };
 }
 
 export type Config = ReturnType<typeof loadConfig>;

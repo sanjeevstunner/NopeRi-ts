@@ -1,9 +1,7 @@
 import { TokenAuth, type Credentials } from '../common/tokenAuth.ts';
-import { NaukriAuthError } from '../naukri/errors.ts';
-import type { Http } from '../naukri/http.ts';
+import { NaukriAuthError } from '../common/errors.ts';
+import type { Http } from '../common/http.ts';
 import { HEADERS, URLS } from './constants.ts';
-
-export type { Credentials };
 
 /** NaukriGulf login. The session is carried by cookies (`AT`, a ~30min JWT) on the shared HTTP session. */
 export class GulfAuth extends TokenAuth {

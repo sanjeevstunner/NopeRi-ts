@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { after, before, test } from 'node:test';
 import { createApp, type Services } from '../src/api/app.ts';
-import { NaukriAuthError } from '../src/naukri/errors.ts';
+import { NaukriAuthError } from '../src/common/errors.ts';
 import { NaukriProfile } from '../src/naukri/profile.ts';
 
 const KEY = 'test-key-0123456789';
@@ -134,8 +134,8 @@ test('apply with a resume swaps it in, then restores the original even when appl
 });
 
 test("Naukri's daily apply quota 403 is a 429 quota error, not an auth error", async () => {
-  const { ensureOk } = await import('../src/naukri/http.ts');
-  const { NaukriAuthError, NaukriQuotaError } = await import('../src/naukri/errors.ts');
+  const { ensureOk } = await import('../src/common/http.ts');
+  const { NaukriAuthError, NaukriQuotaError } = await import('../src/common/errors.ts');
   const res = (statusCode: number, body: object) =>
     ({ statusCode, ok: false, reason: 'Forbidden', text: JSON.stringify(body), json: () => body }) as any;
   const quota = { message: 'Daily quota of jobs exceeded', statusCode: 403, validationErrors: [{ customErrorCode: 403009 }] };

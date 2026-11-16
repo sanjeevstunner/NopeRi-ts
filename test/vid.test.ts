@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NaukriAuth } from '../src/naukri/auth.ts';
-import type { Http } from '../src/naukri/http.ts';
+import type { Http } from '../src/common/http.ts';
 import { generateVid } from '../src/naukri/vid.ts';
 
 test('generateVid returns a base64 token', async () => {
