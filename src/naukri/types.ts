@@ -9,6 +9,8 @@ export interface Job {
   applyLink: string;
   description: string;
   tags: string[];
+  /** Naukri's diversityTagText, e.g. "Prefers women candidates". */
+  diversityTag?: string;
 }
 
 export interface ApplicationStatus {

@@ -43,6 +43,7 @@ test('parseJob maps fields and falls back sensibly', () => {
     'https://www.naukri.com/job-listings-x-1');
   assert.equal(parseJob({ placeholders: [{ type: 'salary', label: '5-8 Lacs' }] }).salary, '5-8 Lacs');
   assert.equal(job.jobId, '123');
+  assert.equal(parseJob({ diversityTagText: 'Prefers women candidates' }).diversityTag, 'Prefers women candidates');
   assert.equal(job.location, 'Pune');
   assert.deepEqual(job.tags, ['node', 'aws', 'docker']);
   assert.equal(job.salary, 'Not disclosed');
