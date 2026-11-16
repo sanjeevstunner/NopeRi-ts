@@ -139,9 +139,34 @@ test('parseSkills prefers keySkills, else splits tagsAndSkills like upstream', (
 });
 
 test('jwtExpiry reads exp from nauk_at, undefined for non-JWTs', async () => {
-  const { jwtExpiry } = await import('../src/naukri/auth.ts');
+  const { jwtExpiry } = await import('../src/common/tokenAuth.ts');
   const jwt = (p: object) => `h.${Buffer.from(JSON.stringify(p)).toString('base64url')}.s`;
   assert.equal(jwtExpiry(jwt({ exp: 1_800_000_000 })), 1_800_000_000_000);
   assert.equal(jwtExpiry(jwt({})), undefined);
   assert.equal(jwtExpiry('opaque-token'), undefined);
+});
+
+test('TokenAuth logs in once, then again when the JWT is about to expire', async () => {
+  const { TokenAuth } = await import('../src/common/tokenAuth.ts');
+  const jwt = (expSec: number) => `h.${Buffer.from(JSON.stringify({ exp: expSec })).toString('base64url')}.s`;
+  let logins = 0;
+  let exp = Date.now() / 1000 + 3600;
+  class Fake extends TokenAuth {
+    async login() {
+      logins++;
+      this.loggedIn(jwt(exp));
+    }
+    ready() {
+      return this.ensureLoggedIn();
+    }
+  }
+  const a = new Fake();
+  await Promise.all([a.ready(), a.ready()]);
+  await a.ready();
+  assert.equal(logins, 1);
+  exp = Date.now() / 1000 + 30; // inside the 60s margin
+  await a.login();
+  assert.equal(a.status.loggedIn, false);
+  await a.ready();
+  assert.equal(logins, 3);
 });
