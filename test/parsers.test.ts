@@ -137,3 +137,11 @@ test('parseSkills prefers keySkills, else splits tagsAndSkills like upstream', (
   assert.deepEqual(parseSkills({ tagsAndSkills: 'node, aws ,docker' }), { mandatory: ['node', 'aws'], optional: ['docker'] });
   assert.deepEqual(parseSkills({}), { mandatory: [], optional: [] });
 });
+
+test('jwtExpiry reads exp from nauk_at, undefined for non-JWTs', async () => {
+  const { jwtExpiry } = await import('../src/naukri/auth.ts');
+  const jwt = (p: object) => `h.${Buffer.from(JSON.stringify(p)).toString('base64url')}.s`;
+  assert.equal(jwtExpiry(jwt({ exp: 1_800_000_000 })), 1_800_000_000_000);
+  assert.equal(jwtExpiry(jwt({})), undefined);
+  assert.equal(jwtExpiry('opaque-token'), undefined);
+});

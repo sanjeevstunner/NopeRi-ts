@@ -19,6 +19,7 @@ export class NaukriAuth {
   readonly #creds: Credentials;
   #token?: string;
   #loginTime?: Date;
+  #expiresAt?: number;
   #pendingLogin?: Promise<void>;
 
   constructor(http: Http, creds: Credentials) {
@@ -27,7 +28,7 @@ export class NaukriAuth {
   }
 
   get status() {
-    return { loggedIn: Boolean(this.#token), loginTime: this.#loginTime?.toISOString() ?? null };
+    return { loggedIn: this.#valid(), loginTime: this.#loginTime?.toISOString() ?? null };
   }
 
   async login(): Promise<void> {
@@ -89,7 +90,7 @@ export class NaukriAuth {
   }
 
   #ensureLoggedIn(): Promise<void> {
-    if (this.#token) return Promise.resolve();
+    if (this.#valid()) return Promise.resolve();
     // Concurrent first requests share one login instead of each starting their own.
     this.#pendingLogin ??= this.login().finally(() => (this.#pendingLogin = undefined));
     return this.#pendingLogin;
@@ -99,6 +100,22 @@ export class NaukriAuth {
     if (!token) throw new NaukriAuthError('Naukri did not return an auth token (OTP/MFA may be required)');
     this.#token = token;
     this.#loginTime = new Date();
+    this.#expiresAt = jwtExpiry(token);
+  }
+
+  /** `nauk_at` is a JWT that dies ~1h after login; treat it as gone a minute early so in-flight calls don't 401. */
+  #valid(): boolean {
+    return Boolean(this.#token) && (this.#expiresAt === undefined || Date.now() < this.#expiresAt - 60_000);
+  }
+}
+
+/** `exp` of a JWT in ms, or undefined if the token isn't a readable JWT. */
+export function jwtExpiry(token: string): number | undefined {
+  try {
+    const { exp } = JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString());
+    return typeof exp === 'number' ? exp * 1000 : undefined;
+  } catch {
+    return undefined;
   }
 }
 
