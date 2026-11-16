@@ -1,17 +1,6 @@
-export interface Job {
-  jobId: string;
-  title: string;
-  company: string;
-  location: string;
-  experience: string;
-  salary: string;
-  postedDate: string;
-  applyLink: string;
-  description: string;
-  tags: string[];
-  /** Naukri's diversityTagText, e.g. "Prefers women candidates". */
-  diversityTag?: string;
-}
+import type { BaseSearchParams, Cluster, Job } from '../common/types.ts';
+
+export type { Cluster, Job };
 
 export interface ApplicationStatus {
   statusId: number;
@@ -47,22 +36,9 @@ export interface ProfileFields {
   summary?: string;
 }
 
-export interface SearchParams {
-  keyword: string;
-  location?: string;
-  page?: number;
+export interface SearchParams extends BaseSearchParams {
   jobAge?: number;
-  experience?: number;
-  resultsPerPage?: number;
   latLong?: string;
-  /** Naukri filters keyed by cluster key (e.g. `wfhType: ['2']`); ids come from a previous result's `clusters`. */
-  filters?: Record<string, string[]>;
-}
-
-export interface Cluster {
-  id: string;
-  count: number;
-  label: string;
 }
 
 export interface SearchResult {

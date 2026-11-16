@@ -1,4 +1,5 @@
-import type { Cluster, Job } from '../naukri/types.ts';
+import { pickClusters as pickBy } from '../common/clusters.ts';
+import type { Cluster, Job } from '../common/types.ts';
 import { BASE, FILTER_PARAMS } from './constants.ts';
 
 /**
@@ -25,13 +26,5 @@ export function parseJob(entry: any): Job {
   };
 }
 
-/** Keeps only the filter groups we can send back, as `{id,count,label}` lists. */
-export function pickClusters(raw: unknown): Record<string, Cluster[]> {
-  if (!raw || typeof raw !== 'object') return {};
-  const out: Record<string, Cluster[]> = {};
-  for (const [key, list] of Object.entries(raw)) {
-    if (!(key in FILTER_PARAMS) || !Array.isArray(list) || !list.length) continue;
-    out[key] = list.map((c) => ({ id: String(c.value), count: Number(c.count) || 0, label: String(c.label ?? '') }));
-  }
-  return out;
-}
+/** NaukriGulf clusters carry their id in `value`. */
+export const pickClusters = (raw: unknown): Record<string, Cluster[]> => pickBy(raw, FILTER_PARAMS, (c) => c.value);

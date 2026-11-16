@@ -1,17 +1,13 @@
 import express, { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
-import type { GulfClient } from '../naukrigulf/index.ts';
-import type { NaukriClient } from '../naukri/index.ts';
 import { errorHandler, notFound, requireApiKey } from './middleware.ts';
 import { openApiSpec } from './openapi.ts';
-import { authRoutes } from './routes/auth.ts';
-import { gulfRoutes } from './routes/gulf.ts';
-import { jobRoutes } from './routes/jobs.ts';
-import { profileRoutes } from './routes/profile.ts';
+import { gulfRoutes, type GulfServices } from './routes/gulf.ts';
+import { naukriRoutes, type NaukriServices } from './routes/naukri.ts';
 
-export type Services = Pick<NaukriClient, 'auth' | 'profile' | 'jobs'>;
+export type Services = NaukriServices;
 
-export function createApp(naukri: Services | undefined, apiKey: string, gulf?: Pick<GulfClient, 'auth' | 'jobs' | 'profile'>) {
+export function createApp(naukri: Services | undefined, apiKey: string, gulf?: GulfServices) {
   return express()
     .disable('x-powered-by')
     .use(express.json({ limit: '100kb' }))
@@ -23,7 +19,7 @@ export function createApp(naukri: Services | undefined, apiKey: string, gulf?: P
       res.json(openApiSpec);
     })
     .use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, { customSiteTitle: 'NopeRi API' }))
-    .use('/api', requireApiKey(apiKey), ...(naukri ? [authRoutes(naukri.auth), profileRoutes(naukri.profile), jobRoutes(naukri.jobs, naukri.profile)] : []), ...(gulf ? [Router().use('/gulf', gulfRoutes(gulf))] : []))
+    .use('/api', requireApiKey(apiKey), ...(naukri ? [naukriRoutes(naukri)] : []), ...(gulf ? [Router().use('/gulf', gulfRoutes(gulf))] : []))
     .use(notFound)
     .use(errorHandler);
 }

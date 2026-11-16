@@ -8,21 +8,9 @@ const OtpTarget = z.object({
 });
 const VerifyOtp = OtpTarget.extend({ otp: z.string().regex(/^\d{4,8}$/, 'OTP must be 4-8 digits') });
 
-const UseToken = z.object({ token: z.string().min(20) });
-
+/** Naukri-only auth routes (OTP login). Status/login/token are in siteRoutes. */
 export function authRoutes(auth: NaukriAuth) {
   return Router()
-    .get('/auth/status', (_req, res) => {
-      res.json(auth.status);
-    })
-    .post('/auth/login', async (_req, res) => {
-      await auth.login();
-      res.json(auth.status);
-    })
-    .post('/auth/token', (req, res) => {
-      auth.useToken(UseToken.parse(req.body).token);
-      res.json(auth.status);
-    })
     .post('/auth/otp/send', async (req, res) => {
       const { username, isMobile } = OtpTarget.parse(req.body ?? {});
       res.json(await auth.sendOtp(username, isMobile));

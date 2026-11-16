@@ -3,7 +3,7 @@ import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { HTTPCloakError } from 'httpcloak';
 import multer from 'multer';
 import { ZodError } from 'zod';
-import { NaukriError } from '../naukri/errors.ts';
+import { NaukriError } from '../common/errors.ts';
 
 const digest = (s: string) => createHash('sha256').update(s).digest();
 
