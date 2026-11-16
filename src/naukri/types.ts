@@ -30,11 +30,44 @@ export interface ApplicationDetail extends ApplicationHistory {
   matching: Record<string, unknown>;
 }
 
+/** A Naukri taxonomy entry: a city or a designation. */
+export interface Tag {
+  id: number;
+  name: string;
+}
+
+export interface Salary {
+  /** Per year, e.g. 1500000. */
+  amount: number;
+  currency: string;
+}
+
 export interface ProfileFields {
   headline?: string;
   name?: string;
   summary?: string;
+  keySkills?: string[];
+  /** Designations, at most 3. */
+  desiredRoles?: Tag[];
+  /** Cities, at most 10. */
+  preferredLocations?: Tag[];
+  expectedSalary?: Salary;
+  /** Key of NOTICE_PERIODS. */
+  noticePeriodId?: number;
 }
+
+/** The profile fields PATCH /profile can change, as they are now. */
+export interface EditableProfile {
+  headline: string;
+  summary: string;
+  keySkills: string[];
+  desiredRoles: Tag[];
+  preferredLocations: Tag[];
+  expectedSalary: Salary | null;
+  noticePeriodId: number | null;
+}
+
+export type TaxonomyType = 'location' | 'designation';
 
 export interface SearchParams extends BaseSearchParams {
   jobAge?: number;

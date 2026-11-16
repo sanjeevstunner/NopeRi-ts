@@ -11,7 +11,10 @@ import {
   parseHistoryDetail,
   parseJob,
   parseQuestionnaire,
+  parseEditable,
   parseSkills,
+  parseTaxonomy,
+  toNaukriProfile,
 } from '../src/naukri/parsers.ts';
 
 test('nkparam is a 512-bit RSA ciphertext in base64', () => {
@@ -169,4 +172,69 @@ test('TokenAuth logs in once, then again when the JWT is about to expire', async
   assert.equal(a.status.loggedIn, false);
   await a.ready();
   assert.equal(logins, 3);
+});
+
+test('profile fields map onto the keys Naukri\'s profile page saves', () => {
+  assert.deepEqual(toNaukriProfile({ headline: 'H' }), { resumeHeadline: 'H' });
+  assert.deepEqual(
+    toNaukriProfile({
+      keySkills: ['Node.js', ' node.js ', 'AWS, Lambda', ''],
+      desiredRoles: [{ id: 119913, name: 'FDE' }],
+      preferredLocations: [{ id: 139, name: 'Pune' }],
+      expectedSalary: { amount: 1800000, currency: 'INR' },
+      noticePeriodId: 2,
+    }),
+    {
+      keySkills: 'Node.js,AWS  Lambda',
+      desiredRoleTypeId: [{ id: 119913, value: 'FDE' }],
+      newLocationPrefId: [{ id: 139, value: 'Pune' }],
+      absoluteExpectedCtc: '1800000',
+      expectedCtcCurrency: 'INR',
+      noticePeriod: { id: 2 },
+    },
+  );
+});
+
+test('editable fields come out of the full profile', () => {
+  const full = {
+    profile: [
+      {
+        resumeHeadline: 'AWS certified',
+        summary: 'S',
+        keySkills: 'node.js,React,node.js',
+        desiredRole: [{ id: 119913, value: 'FDE' }],
+        newLocationPrefId: [{ id: 97, value: 'Bangalore/Bengaluru', type: null }],
+        absoluteExpectedCtc: '1500000',
+        expectedCtcCurrency: 'INR',
+        noticePeriod: { id: 1, value: '15 Days or less' },
+      },
+    ],
+  };
+  assert.deepEqual(parseEditable(full), {
+    headline: 'AWS certified',
+    summary: 'S',
+    keySkills: ['node.js', 'React'],
+    desiredRoles: [{ id: 119913, name: 'FDE' }],
+    preferredLocations: [{ id: 97, name: 'Bangalore/Bengaluru' }],
+    expectedSalary: { amount: 1500000, currency: 'INR' },
+    noticePeriodId: 1,
+  });
+  assert.deepEqual(parseEditable({}), {
+    headline: '', summary: '', keySkills: [], desiredRoles: [], preferredLocations: [], expectedSalary: null, noticePeriodId: null,
+  });
+});
+
+test('taxonomy lookup keeps cities for locations, designations for roles', () => {
+  const raw = {
+    resultList: {
+      title: [
+        { name: ['Pune'], id: [139], type: 'city' },
+        { name: ['Pune Cantonment'], id: [40324], type: 'locality' },
+        { name: ['Forward Deployed Software Engineer'], id: [119913], type: 'designation' },
+      ],
+    },
+  };
+  assert.deepEqual(parseTaxonomy(raw, 'location'), [{ id: 139, name: 'Pune' }]);
+  assert.deepEqual(parseTaxonomy(raw, 'designation'), [{ id: 119913, name: 'Forward Deployed Software Engineer' }]);
+  assert.deepEqual(parseTaxonomy({}, 'location'), []);
 });

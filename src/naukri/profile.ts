@@ -12,11 +12,14 @@ import {
   mnjUrl,
   mnjVersion,
   parseHistory,
+  parseEditable,
   parseHistoryDetail,
+  parseTaxonomy,
   randomFileKey,
+  toNaukriProfile,
   scriptUrls,
 } from './parsers.ts';
-import type { ApplicationDetail, ApplicationHistory, HistoryParams, ProfileFields } from './types.ts';
+import type { ApplicationDetail, ApplicationHistory, EditableProfile, HistoryParams, ProfileFields, Tag, TaxonomyType } from './types.ts';
 
 /** Profile reads/writes: profile id, headline/name/summary, resume, application history. */
 export class NaukriProfile extends SiteService<NaukriAuth> {
@@ -36,11 +39,7 @@ export class NaukriProfile extends SiteService<NaukriAuth> {
 
   async update(fields: ProfileFields) {
     const profileId = await this.profileId();
-    const profile = Object.fromEntries(
-      Object.entries({ resumeHeadline: fields.headline, name: fields.name, summary: fields.summary }).filter(
-        ([, v]) => v !== undefined,
-      ),
-    );
+    const profile = toNaukriProfile(fields);
     const res = await this.http.post(URLS.profileUpdate, {
       headers: await this.auth.authHeaders(
         HEADERS.profileWrite('https://www.naukri.com/mnjuser/profile?id=&altresid'),
@@ -48,6 +47,20 @@ export class NaukriProfile extends SiteService<NaukriAuth> {
       json: { profile, profileId },
     });
     return { profileId, response: readJson(res, 'Profile update') };
+  }
+
+  /** The fields `update` can change, as they are now. */
+  async editable(): Promise<EditableProfile> {
+    return parseEditable(await this.full());
+  }
+
+  /** Naukri's ids for a city or designation name, best match first. Needs no login. */
+  async lookup(type: TaxonomyType, q: string): Promise<Tag[]> {
+    const res = await this.http.get(URLS.taxonomy, {
+      headers: { referer: 'https://www.naukri.com/' },
+      params: { astext: q, category: type, limit: '10', appId: '105' },
+    });
+    return parseTaxonomy(readJson(res, 'Taxonomy lookup'), type);
   }
 
   /** Uploads a PDF resume: validate the file with Naukri's file service, then attach it to the profile. */

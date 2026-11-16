@@ -82,7 +82,9 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | POST | `/api/auth/otp/verify` | `{ otp, username?, isMobile? }` | Completes the OTP login |
 | GET | `/api/profile/id` | | |
 | GET | `/api/profile` | | Full profile as Naukri returns it (user, profile incl. `cvInfo`, employments, educations, skills, projects, ...) |
-| PATCH | `/api/profile` | `{ headline?, name?, summary? }` | At least one field |
+| PATCH | `/api/profile` | `{ headline?, name?, summary?, keySkills?, desiredRoles?, preferredLocations?, expectedSalary?, noticePeriodId? }` | At least one field; only those sent change. Roles/locations are `[{ id, name }]` from `/api/profile/lookup` (max 3 / 10), `expectedSalary` is `{ amount, currency? }` per year, `noticePeriodId` 1–6 (15 days or less … serving notice) |
+| GET | `/api/profile/editable` | | The fields above as they are now |
+| GET | `/api/profile/lookup` | `?type=location\|designation&q` | Naukri ids for a city or designation, best match first |
 | GET | `/api/profile/resume` | | Downloads the current resume PDF under its Naukri filename |
 | PUT | `/api/profile/resume` | `multipart/form-data`, PDF in field `resume` | Max 5 MB. The uploaded filename is kept (sanitised) |
 | GET | `/api/applications` | `?pageSize&days&pageNumber&mobile` | Application history |

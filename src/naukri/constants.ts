@@ -17,7 +17,19 @@ export const URLS = {
   recommended: 'https://www.naukri.com/jobapi/v2/search/recom-jobs',
   jobDetails: (jobId: string) => `https://www.naukri.com/jobapi/v4/job/${encodeURIComponent(jobId)}`,
   apply: 'https://www.naukri.com/cloudgateway-workflow/workflow-services/apply-workflow/v1/apply',
+  /** City/designation name → taxonomy id. Public; the site calls it via JSONP. */
+  taxonomy: 'https://taxonomy-suggest.naukri.com/suggest/taxonomyCommonSuggester',
 } as const;
+
+/** Notice period id → label, as Naukri's profile form offers them. */
+export const NOTICE_PERIODS: Record<number, string> = {
+  1: '15 Days or less',
+  2: '1 Months',
+  3: '2 Months',
+  4: '3 Months',
+  5: 'More than 3 Months',
+  6: 'Serving Notice Period',
+};
 
 /** Search filter cluster key (as returned in `clusters`) → the query param Naukri filters on. Each verified live against cluster counts; `employement` left out (param unknown). */
 export const FILTER_PARAMS: Record<string, string> = {

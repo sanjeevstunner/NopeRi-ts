@@ -45,12 +45,12 @@ const PROFILE_FIELDS = {
   summary: z.string().trim().min(1).max(1000),
 };
 
-/** PATCH /profile body for the fields a site can edit; at least one is required. */
-export const profileUpdateSchema = <K extends keyof typeof PROFILE_FIELDS>(...keys: K[]) =>
+/** PATCH /profile body for the fields a site can edit, plus any site-only `extra` fields; at least one is required. */
+export const profileUpdateSchema = <K extends keyof typeof PROFILE_FIELDS, E extends z.ZodRawShape = {}>(keys: K[], extra?: E) =>
   z
-    .object(Object.fromEntries(keys.map((k) => [k, PROFILE_FIELDS[k]])) as Pick<typeof PROFILE_FIELDS, K>)
+    .object({ ...(Object.fromEntries(keys.map((k) => [k, PROFILE_FIELDS[k]])) as Pick<typeof PROFILE_FIELDS, K>), ...(extra as E) })
     .partial()
-    .refine((f) => Object.values(f).some((v) => v !== undefined), `Provide at least one of ${keys.join(', ')}`);
+    .refine((f) => Object.values(f).some((v) => v !== undefined), 'Provide at least one field to update');
 
 /** `filter.wfhType=2&filter.wfhType=3` → `{ filters: { wfhType: ['2','3'] } }`; other params pass through. */
 export function searchQuery(query: Record<string, unknown>) {

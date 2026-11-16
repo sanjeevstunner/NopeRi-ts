@@ -14,6 +14,8 @@ const services = {
   profile: {
     full: async () => ({ profile: [{ profileId: 'p1' }] }),
     update: async (f: unknown) => (calls.push(f), { profileId: 'p1', response: {} }),
+    editable: async () => ({ headline: 'h', keySkills: [] }),
+    lookup: async (...a: unknown[]) => (calls.push(a), [{ id: 139, name: 'Pune' }]),
     uploadResume: async (b: Buffer, name: string) => (calls.push([b.length, name]), { profileId: 'p1', response: {} }),
     applicationDetail: async (...a: unknown[]) => (calls.push(a), { totalApplicants: 1 }),
   },
@@ -63,6 +65,30 @@ test('profile update needs at least one field', async () => {
   assert.deepEqual(await (await call('/api/profile')).json(), { profile: [{ profileId: 'p1' }] });
   assert.equal((await call('/api/profile', { method: 'PATCH', body: '{}' })).status, 400);
   assert.equal((await call('/api/profile', { method: 'PATCH', body: '{"headline":"Backend"}' })).status, 200);
+});
+
+test('profile update takes key skills and the career profile', async () => {
+  const patch = (body: object) => call('/api/profile', { method: 'PATCH', body: JSON.stringify(body) });
+  const career = {
+    keySkills: ['Node.js'],
+    desiredRoles: [{ id: 119913, name: 'Forward Deployed Software Engineer' }],
+    preferredLocations: [{ id: 139, name: 'Pune' }],
+    expectedSalary: { amount: 1800000 },
+    noticePeriodId: 1,
+  };
+  assert.equal((await patch(career)).status, 200);
+  assert.deepEqual(calls.at(-1), { ...career, expectedSalary: { amount: 1800000, currency: 'INR' } });
+  assert.equal((await patch({ noticePeriodId: 9 })).status, 400);
+  assert.equal((await patch({ desiredRoles: [1, 2, 3, 4].map((id) => ({ id, name: 'r' })) })).status, 400);
+  assert.equal((await patch({ expectedSalary: { amount: -1 } })).status, 400);
+  assert.equal((await call('/api/profile/editable')).status, 200);
+});
+
+test('taxonomy lookup validates type and query', async () => {
+  assert.deepEqual(await (await call('/api/profile/lookup?type=location&q=pune')).json(), [{ id: 139, name: 'Pune' }]);
+  assert.deepEqual(calls.at(-1), ['location', 'pune']);
+  assert.equal((await call('/api/profile/lookup?type=city&q=pune')).status, 400);
+  assert.equal((await call('/api/profile/lookup?type=location&q=p')).status, 400);
 });
 
 test('resume upload takes a multipart PDF in the "resume" field', async () => {

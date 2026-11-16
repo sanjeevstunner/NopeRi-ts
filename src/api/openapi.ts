@@ -44,6 +44,8 @@ const q = (name: string, schema: Record<string, unknown>, description: string, e
 });
 
 const gulfJobId = { ...jobIdParam, description: 'Numeric NaukriGulf job ID.', example: '111126000452' };
+const TAG = { type: 'object', required: ['id', 'name'], properties: { id: { type: 'integer' }, name: { type: 'string' } } };
+const NOTICE_DOC = '1: 15 days or less, 2: 1 month, 3: 2 months, 4: 3 months, 5: more than 3 months, 6: serving notice.';
 const raw = (d: string) => json({ type: 'object', additionalProperties: true }, d);
 const gulfErrors = { '400': commonErrors['400'], '401': commonErrors['401'], '502': commonErrors['502'] };
 
@@ -382,7 +384,8 @@ export const openApiSpec = {
       },
       patch: {
         tags: ['Naukri · Profile'],
-        summary: 'Update headline, name or summary',
+        summary: 'Update headline, summary, key skills or career profile',
+        description: 'Only the fields sent are changed. Get role and location ids from `/api/profile/lookup`.',
         requestBody: {
           required: true,
           content: {
@@ -394,12 +397,54 @@ export const openApiSpec = {
                   headline: { type: 'string', minLength: 1, maxLength: 250 },
                   name: { type: 'string', minLength: 1, maxLength: 100 },
                   summary: { type: 'string', minLength: 1, maxLength: 1000 },
+                  keySkills: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'string' }, description: 'Replaces all key skills.' },
+                  desiredRoles: { type: 'array', minItems: 1, maxItems: 3, items: TAG },
+                  preferredLocations: { type: 'array', minItems: 1, maxItems: 10, items: TAG },
+                  expectedSalary: {
+                    type: 'object',
+                    required: ['amount'],
+                    properties: { amount: { type: 'integer', minimum: 1, example: 1800000 }, currency: { type: 'string', default: 'INR' } },
+                  },
+                  noticePeriodId: { type: 'integer', enum: [1, 2, 3, 4, 5, 6], description: NOTICE_DOC },
                 },
               },
             },
           },
         },
         responses: { '200': json({ type: 'object', additionalProperties: true }, "Naukri's response."), ...commonErrors },
+      },
+    },
+    '/api/profile/editable': {
+      get: {
+        tags: ['Naukri · Profile'],
+        summary: 'Fields PATCH /api/profile can change',
+        responses: {
+          '200': json({
+            type: 'object',
+            properties: {
+              headline: { type: 'string' },
+              summary: { type: 'string' },
+              keySkills: { type: 'array', items: { type: 'string' } },
+              desiredRoles: { type: 'array', items: TAG },
+              preferredLocations: { type: 'array', items: TAG },
+              expectedSalary: { type: 'object', nullable: true, properties: { amount: { type: 'integer' }, currency: { type: 'string' } } },
+              noticePeriodId: { type: 'integer', nullable: true, description: NOTICE_DOC },
+            },
+          }),
+          '401': commonErrors['401'],
+          '502': commonErrors['502'],
+        },
+      },
+    },
+    '/api/profile/lookup': {
+      get: {
+        tags: ['Naukri · Profile'],
+        summary: 'Naukri ids for a city or designation',
+        parameters: [
+          { name: 'type', in: 'query', required: true, schema: { type: 'string', enum: ['location', 'designation'] } },
+          { name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2 }, example: 'pune' },
+        ],
+        responses: { '200': json({ type: 'array', items: TAG }, 'Best match first.'), '400': commonErrors['400'], '502': commonErrors['502'] },
       },
     },
     '/api/profile/resume': {
