@@ -51,6 +51,7 @@ export function parseJob(raw: any): Job {
       ? new URL(jdUrl, 'https://www.naukri.com').href
       : `https://www.naukri.com/job-listings-${jobId}`,
     description: raw.jobDescription || '',
+    diversityTag: text(raw.diversityTagText),
     tags: raw.tagsAndSkills ? String(raw.tagsAndSkills).split(',').map((t) => t.trim()) : [],
   };
 }
