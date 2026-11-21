@@ -1,5 +1,6 @@
 import { publicEncrypt, constants, randomInt } from 'node:crypto';
-import { MNJ_FALLBACK_VERSIONS, NKPARAM_PUBLIC_KEY, STATIC_JS_BASE } from './constants.ts';
+import { MNJ_FALLBACK_VERSIONS, NKPARAM_PUBLIC_KEY, STATIC_JS_BASE, TAXONOMY_TYPES } from './constants.ts';
+import { basicsProfile, parseBasics, parsePersonal, parseSections, personalProfile } from './sections.ts';
 import type { ApplicationDetail, ApplicationHistory, EditableProfile, Job, JobSkills, ProfileFields, Question, Tag, TaxonomyType } from './types.ts';
 
 // Pure helpers: no I/O, so they are unit-tested directly.
@@ -182,6 +183,8 @@ export function toNaukriProfile(f: ProfileFields): Record<string, unknown> {
     absoluteExpectedCtc: f.expectedSalary && String(f.expectedSalary.amount),
     expectedCtcCurrency: f.expectedSalary?.currency,
     noticePeriod: f.noticePeriodId === undefined ? undefined : { id: f.noticePeriodId },
+    ...(f.basics ? basicsProfile(f.basics) : {}),
+    ...(f.personal ? personalProfile(f.personal) : {}),
   };
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined));
 }
@@ -198,14 +201,25 @@ export function parseEditable(full: any): EditableProfile {
     preferredLocations: fromTags(p.newLocationPrefId),
     expectedSalary: amount > 0 ? { amount, currency: p.expectedCtcCurrency || 'INR' } : null,
     noticePeriodId: Number(p.noticePeriod?.id) || null,
+    basics: parseBasics(full),
+    personal: parsePersonal(full),
+    ...parseSections(full),
   };
 }
 
 /** Taxonomy suggester response → tags of the asked type (cities only for locations, not localities). */
 export function parseTaxonomy(raw: any, type: TaxonomyType): Tag[] {
-  const want = type === 'location' ? 'city' : 'designation';
+  const want = TAXONOMY_TYPES[type];
   return (raw?.resultList?.title ?? [])
     .filter((t: any) => t.type === want)
     .map((t: any) => ({ id: Number([].concat(t.id)[0]), name: String([].concat(t.name)[0]) }))
     .filter((t: Tag) => t.id > 0 && t.name);
+}
+
+/** A dropdown list's answer → its options, with the parent (a specialisation's course) when it has one. */
+export function parseOptions(raw: any, list: string): { id: number; name: string; parentId: number }[] {
+  const items = raw?.[list];
+  return Array.isArray(items)
+    ? items.map((o: any) => ({ id: Number(o.id), name: String(o.label ?? ''), parentId: Number(o.parentId) || 0 })).filter((o) => o.id > 0 && o.name)
+    : [];
 }

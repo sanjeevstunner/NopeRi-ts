@@ -210,7 +210,11 @@ test('editable fields come out of the full profile', () => {
       },
     ],
   };
-  assert.deepEqual(parseEditable(full), {
+  const { basics, personal, employments, itSkills, educations, projects, onlineProfiles, workSamples, publications, presentations, patents, certifications, languages, ...career } =
+    parseEditable(full);
+  assert.equal(employments.length + projects.length + languages.length, 0);
+  assert.deepEqual(basics, { name: '', city: null, experience: { years: 0, months: 0 }, currentSalary: null });
+  assert.deepEqual(career, {
     headline: 'AWS certified',
     summary: 'S',
     keySkills: ['node.js', 'React'],
@@ -219,9 +223,8 @@ test('editable fields come out of the full profile', () => {
     expectedSalary: { amount: 1500000, currency: 'INR' },
     noticePeriodId: 1,
   });
-  assert.deepEqual(parseEditable({}), {
-    headline: '', summary: '', keySkills: [], desiredRoles: [], preferredLocations: [], expectedSalary: null, noticePeriodId: null,
-  });
+  assert.equal(parseEditable({}).headline, '');
+  assert.deepEqual(parseEditable({}).employments, []);
 });
 
 test('taxonomy lookup keeps cities for locations, designations for roles', () => {

@@ -19,6 +19,24 @@ export const URLS = {
   apply: 'https://www.naukri.com/cloudgateway-workflow/workflow-services/apply-workflow/v1/apply',
   /** City/designation name → taxonomy id. Public; the site calls it via JSONP. */
   taxonomy: 'https://taxonomy-suggest.naukri.com/suggest/taxonomyCommonSuggester',
+  /** Naukri's dropdown lists (courses, specialisations, grading...). Public; answers only appid 1. */
+  dropdown: (list: string) => `https://apis.naukri.com/central_services/dropdowns/v0/${list}`,
+  /** DELETE (as a POST override) of one item of a profile section. */
+  sectionItem: (profileId: string, section: string, id: string) =>
+    `https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v0/users/self/profiles/${profileId}/${section}/${encodeURIComponent(id)}`,
+} as const;
+
+/** Dropdown lists GET /profile/options serves. */
+export const OPTION_LISTS = ['UGCOURSE', 'PGCOURSE', 'PPGCOURSE', 'UGSPEC', 'PGSPEC', 'PPGSPEC', 'GRADING_SYSTEM'] as const;
+
+/** Taxonomy category → the result type kept, per lookup type. */
+export const TAXONOMY_TYPES = {
+  location: 'city',
+  designation: 'designation',
+  company: 'company',
+  institute: 'institute',
+  skill: 'skill',
+  certification: 'certificate',
 } as const;
 
 /** Notice period id → label, as Naukri's profile form offers them. */

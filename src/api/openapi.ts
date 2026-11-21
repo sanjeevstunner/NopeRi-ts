@@ -384,8 +384,9 @@ export const openApiSpec = {
       },
       patch: {
         tags: ['Naukri · Profile'],
-        summary: 'Update headline, summary, key skills or career profile',
-        description: 'Only the fields sent are changed. Get role and location ids from `/api/profile/lookup`.',
+        summary: 'Update any part of the profile',
+        description:
+          'Only what is sent changes. `basics` (name, city, experience, current salary) and `personal` details are profile fields; `sections` saves items of employments, itSkills, educations, projects, onlineProfiles, workSamples, publications, presentations, patents, certifications and languages (with `id` to change one, without to add one; the shape of each is what `/api/profile/editable` returns); `remove` deletes items. Deletes run first, then the profile fields, then each section, stopping at the first failure. Ids for cities, roles, companies, institutes, skills and certifications come from `/api/profile/lookup`, course and grading ids from `/api/profile/options/{list}`.',
         requestBody: {
           required: true,
           content: {
@@ -406,6 +407,10 @@ export const openApiSpec = {
                     properties: { amount: { type: 'integer', minimum: 1, example: 1800000 }, currency: { type: 'string', default: 'INR' } },
                   },
                   noticePeriodId: { type: 'integer', enum: [1, 2, 3, 4, 5, 6], description: NOTICE_DOC },
+                  basics: { type: 'object', additionalProperties: true, description: '`{ name?, city?: Tag, experience?: { years, months }, currentSalary?: { amount, currency } }`' },
+                  personal: { type: 'object', additionalProperties: true, description: '`{ birthDate?, gender?: "M"|"F", address?, hometown?, pincode?, maritalStatus?: "N"|"M"|"W"|"D"|"S"|"O" }` (single, married, widowed, divorced, separated, other)' },
+                  sections: { type: 'object', additionalProperties: { type: 'array', items: { type: 'object', additionalProperties: true } } },
+                  remove: { type: 'array', items: { type: 'object', required: ['section', 'id'], properties: { section: { type: 'string' }, id: { type: 'string' } } } },
                 },
               },
             },
@@ -417,7 +422,7 @@ export const openApiSpec = {
     '/api/profile/editable': {
       get: {
         tags: ['Naukri · Profile'],
-        summary: 'Fields PATCH /api/profile can change',
+        summary: 'Everything PATCH /api/profile can change, as it is now',
         responses: {
           '200': json({
             type: 'object',
@@ -439,12 +444,21 @@ export const openApiSpec = {
     '/api/profile/lookup': {
       get: {
         tags: ['Naukri · Profile'],
-        summary: 'Naukri ids for a city or designation',
+        summary: 'Naukri ids for a city, designation, company, institute, skill or certification',
         parameters: [
-          { name: 'type', in: 'query', required: true, schema: { type: 'string', enum: ['location', 'designation'] } },
+          { name: 'type', in: 'query', required: true, schema: { type: 'string', enum: ['location', 'designation', 'company', 'institute', 'skill', 'certification'] } },
           { name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2 }, example: 'pune' },
         ],
         responses: { '200': json({ type: 'array', items: TAG }, 'Best match first.'), '400': commonErrors['400'], '502': commonErrors['502'] },
+      },
+    },
+    '/api/profile/options/{list}': {
+      get: {
+        tags: ['Naukri · Profile'],
+        summary: "One of Naukri's dropdown lists",
+        description: 'Courses and specialisations (a specialisation\'s `parentId` is its course), grading systems.',
+        parameters: [{ name: 'list', in: 'path', required: true, schema: { type: 'string', enum: ['UGCOURSE', 'PGCOURSE', 'PPGCOURSE', 'UGSPEC', 'PGSPEC', 'PPGSPEC', 'GRADING_SYSTEM'] } }],
+        responses: { '200': json({ type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, name: { type: 'string' }, parentId: { type: 'integer' } } } }), '400': commonErrors['400'], '502': commonErrors['502'] },
       },
     },
     '/api/profile/resume': {

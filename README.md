@@ -82,9 +82,10 @@ Every `/api/*` route needs the API key. Errors share one shape: `{ "error": { "c
 | POST | `/api/auth/otp/verify` | `{ otp, username?, isMobile? }` | Completes the OTP login |
 | GET | `/api/profile/id` | | |
 | GET | `/api/profile` | | Full profile as Naukri returns it (user, profile incl. `cvInfo`, employments, educations, skills, projects, ...) |
-| PATCH | `/api/profile` | `{ headline?, name?, summary?, keySkills?, desiredRoles?, preferredLocations?, expectedSalary?, noticePeriodId? }` | At least one field; only those sent change. Roles/locations are `[{ id, name }]` from `/api/profile/lookup` (max 3 / 10), `expectedSalary` is `{ amount, currency? }` per year, `noticePeriodId` 1–6 (15 days or less … serving notice) |
-| GET | `/api/profile/editable` | | The fields above as they are now |
-| GET | `/api/profile/lookup` | `?type=location\|designation&q` | Naukri ids for a city or designation, best match first |
+| PATCH | `/api/profile` | `{ headline?, name?, summary?, keySkills?, desiredRoles?, preferredLocations?, expectedSalary?, noticePeriodId?, basics?, personal?, sections?, remove? }` | Any part of the profile; only what is sent changes. Roles/locations are `[{ id, name }]` from `/api/profile/lookup` (max 3 / 10), `expectedSalary` is `{ amount, currency? }` per year, `noticePeriodId` 1–6. `sections` saves items of employments, itSkills, educations, projects, onlineProfiles, workSamples, publications, presentations, patents, certifications, languages (with `id` to change, without to add); `remove: [{ section, id }]` deletes. Deletes run first, then profile fields, then sections, stopping at the first failure |
+| GET | `/api/profile/editable` | | Everything PATCH can change, as it is now, in the shapes PATCH takes |
+| GET | `/api/profile/lookup` | `?type=location\|designation\|company\|institute\|skill\|certification&q` | Naukri ids for a name, best match first |
+| GET | `/api/profile/options/:list` | | Naukri dropdown: `UGCOURSE`/`PGCOURSE`/`PPGCOURSE`, `UGSPEC`/`PGSPEC`/`PPGSPEC` (`parentId` is the course), `GRADING_SYSTEM` |
 | GET | `/api/profile/resume` | | Downloads the current resume PDF under its Naukri filename |
 | PUT | `/api/profile/resume` | `multipart/form-data`, PDF in field `resume` | Max 5 MB. The uploaded filename is kept (sanitised) |
 | GET | `/api/applications` | `?pageSize&days&pageNumber&mobile` | Application history |

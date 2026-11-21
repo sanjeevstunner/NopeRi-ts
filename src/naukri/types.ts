@@ -1,6 +1,8 @@
 import type { BaseSearchParams, Cluster, Job } from '../common/types.ts';
+import type { Basics, Personal, SectionName, Sections } from './sections.ts';
 
 export type { Cluster, Job };
+export type * from './sections.ts';
 
 export interface ApplicationStatus {
   statusId: number;
@@ -54,10 +56,16 @@ export interface ProfileFields {
   expectedSalary?: Salary;
   /** Key of NOTICE_PERIODS. */
   noticePeriodId?: number;
+  basics?: Partial<Basics>;
+  personal?: Partial<Personal>;
+  /** Items to save in each section: with an id to change one, without to add one. Items left out stay as they are. */
+  sections?: Partial<Sections>;
+  /** Items to delete. */
+  remove?: { section: SectionName; id: string }[];
 }
 
-/** The profile fields PATCH /profile can change, as they are now. */
-export interface EditableProfile {
+/** The profile as PATCH /profile can change it, as it is now. */
+export interface EditableProfile extends Sections {
   headline: string;
   summary: string;
   keySkills: string[];
@@ -65,9 +73,12 @@ export interface EditableProfile {
   preferredLocations: Tag[];
   expectedSalary: Salary | null;
   noticePeriodId: number | null;
+  basics: Basics;
+  personal: Personal;
 }
 
-export type TaxonomyType = 'location' | 'designation';
+/** Things Naukri has ids for, as GET /profile/lookup takes them. */
+export type TaxonomyType = 'location' | 'designation' | 'company' | 'institute' | 'skill' | 'certification';
 
 export interface SearchParams extends BaseSearchParams {
   jobAge?: number;
