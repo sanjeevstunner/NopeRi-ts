@@ -44,6 +44,8 @@ const q = (name: string, schema: Record<string, unknown>, description: string, e
 });
 
 const gulfJobId = { ...jobIdParam, description: 'Numeric NaukriGulf job ID.', example: '111126000452' };
+const TAG = { type: 'object', required: ['id', 'name'], properties: { id: { type: 'integer' }, name: { type: 'string' } } };
+const NOTICE_DOC = '1: 15 days or less, 2: 1 month, 3: 2 months, 4: 3 months, 5: more than 3 months, 6: serving notice.';
 const raw = (d: string) => json({ type: 'object', additionalProperties: true }, d);
 const gulfErrors = { '400': commonErrors['400'], '401': commonErrors['401'], '502': commonErrors['502'] };
 
@@ -382,7 +384,9 @@ export const openApiSpec = {
       },
       patch: {
         tags: ['Naukri · Profile'],
-        summary: 'Update headline, name or summary',
+        summary: 'Update any part of the profile',
+        description:
+          'Only what is sent changes. `basics` (name, city, experience, current salary) and `personal` details are profile fields; `sections` saves items of employments, itSkills, educations, projects, onlineProfiles, workSamples, publications, presentations, patents, certifications and languages (with `id` to change one, without to add one; the shape of each is what `/api/profile/editable` returns); `remove` deletes items. Deletes run first, then the profile fields, then each section, stopping at the first failure. Ids for cities, roles, companies, institutes, skills and certifications come from `/api/profile/lookup`, course and grading ids from `/api/profile/options/{list}`.',
         requestBody: {
           required: true,
           content: {
@@ -394,12 +398,67 @@ export const openApiSpec = {
                   headline: { type: 'string', minLength: 1, maxLength: 250 },
                   name: { type: 'string', minLength: 1, maxLength: 100 },
                   summary: { type: 'string', minLength: 1, maxLength: 1000 },
+                  keySkills: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'string' }, description: 'Replaces all key skills.' },
+                  desiredRoles: { type: 'array', minItems: 1, maxItems: 3, items: TAG },
+                  preferredLocations: { type: 'array', minItems: 1, maxItems: 10, items: TAG },
+                  expectedSalary: {
+                    type: 'object',
+                    required: ['amount'],
+                    properties: { amount: { type: 'integer', minimum: 1, example: 1800000 }, currency: { type: 'string', default: 'INR' } },
+                  },
+                  noticePeriodId: { type: 'integer', enum: [1, 2, 3, 4, 5, 6], description: NOTICE_DOC },
+                  basics: { type: 'object', additionalProperties: true, description: '`{ name?, city?: Tag, experience?: { years, months }, currentSalary?: { amount, currency } }`' },
+                  personal: { type: 'object', additionalProperties: true, description: '`{ birthDate?, gender?: "M"|"F", address?, hometown?, pincode?, maritalStatus?: "N"|"M"|"W"|"D"|"S"|"O" }` (single, married, widowed, divorced, separated, other)' },
+                  sections: { type: 'object', additionalProperties: { type: 'array', items: { type: 'object', additionalProperties: true } } },
+                  remove: { type: 'array', items: { type: 'object', required: ['section', 'id'], properties: { section: { type: 'string' }, id: { type: 'string' } } } },
                 },
               },
             },
           },
         },
         responses: { '200': json({ type: 'object', additionalProperties: true }, "Naukri's response."), ...commonErrors },
+      },
+    },
+    '/api/profile/editable': {
+      get: {
+        tags: ['Naukri · Profile'],
+        summary: 'Everything PATCH /api/profile can change, as it is now',
+        responses: {
+          '200': json({
+            type: 'object',
+            properties: {
+              headline: { type: 'string' },
+              summary: { type: 'string' },
+              keySkills: { type: 'array', items: { type: 'string' } },
+              desiredRoles: { type: 'array', items: TAG },
+              preferredLocations: { type: 'array', items: TAG },
+              expectedSalary: { type: 'object', nullable: true, properties: { amount: { type: 'integer' }, currency: { type: 'string' } } },
+              noticePeriodId: { type: 'integer', nullable: true, description: NOTICE_DOC },
+            },
+          }),
+          '401': commonErrors['401'],
+          '502': commonErrors['502'],
+        },
+      },
+    },
+    '/api/profile/lookup': {
+      get: {
+        tags: ['Naukri · Profile'],
+        summary: 'Naukri ids for a city, designation, company, institute, skill or certification',
+        parameters: [
+          { name: 'type', in: 'query', required: true, schema: { type: 'string', enum: ['location', 'designation', 'company', 'institute', 'skill', 'certification'] } },
+          { name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2 }, example: 'pune' },
+        ],
+        responses: { '200': json({ type: 'array', items: TAG }, 'Best match first.'), '400': commonErrors['400'], '502': commonErrors['502'] },
+      },
+    },
+    '/api/profile/options/{list}': {
+      get: {
+        tags: ['Naukri · Profile'],
+        summary: "One of Naukri's dropdown lists",
+        description: 'Courses and specialisations (a specialisation\'s `parentId` is its course), grading systems.',
+        parameters: [{ name: 'list', in: 'path', required: true, schema: { type: 'string', enum: ['UGCOURSE', 'PGCOURSE', 'PPGCOURSE', 'UGSPEC', 'PGSPEC', 'PPGSPEC', 'GRADING_SYSTEM'] } }],
+        responses: { '200': json({ type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, name: { type: 'string' }, parentId: { type: 'integer' } } } }), '400': commonErrors['400'], '502': commonErrors['502'] },
       },
     },
     '/api/profile/resume': {

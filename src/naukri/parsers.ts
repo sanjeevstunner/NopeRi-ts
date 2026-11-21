@@ -1,6 +1,7 @@
 import { publicEncrypt, constants, randomInt } from 'node:crypto';
-import { MNJ_FALLBACK_VERSIONS, NKPARAM_PUBLIC_KEY, STATIC_JS_BASE } from './constants.ts';
-import type { ApplicationDetail, ApplicationHistory, Job, JobSkills, Question } from './types.ts';
+import { MNJ_FALLBACK_VERSIONS, NKPARAM_PUBLIC_KEY, STATIC_JS_BASE, TAXONOMY_TYPES } from './constants.ts';
+import { basicsProfile, parseBasics, parsePersonal, parseSections, personalProfile } from './sections.ts';
+import type { ApplicationDetail, ApplicationHistory, EditableProfile, Job, JobSkills, ProfileFields, Question, Tag, TaxonomyType } from './types.ts';
 
 // Pure helpers: no I/O, so they are unit-tested directly.
 
@@ -156,4 +157,69 @@ export const fallbackMnjUrls = () => MNJ_FALLBACK_VERSIONS.map(mnjUrl);
 
 export function extractFormKey(js: string): string | undefined {
   return js.match(/key:"initUploader".*?d\s*=\s*"([A-Za-z0-9]+)"/s)?.[1] ?? js.match(/d\s*=\s*"([A-Za-z0-9]{10,})"/)?.[1];
+}
+
+const tags = (list: Tag[]) => list.map(({ id, name }) => ({ id, value: name }));
+const fromTags = (list: any): Tag[] =>
+  Array.isArray(list) ? list.map((t: any) => ({ id: Number(t.id), name: String(t.value) })) : [];
+
+/** De-duplicated (case-insensitive), trimmed, comma-free skills: Naukri stores them comma-joined. */
+export function cleanSkills(skills: string[]): string[] {
+  const seen = new Set<string>();
+  return skills
+    .map((s) => s.replaceAll(',', ' ').trim())
+    .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
+}
+
+/** PATCH /profile fields → the `profile` object Naukri's fullprofiles save takes (keys as its profile page sends them). */
+export function toNaukriProfile(f: ProfileFields): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    resumeHeadline: f.headline,
+    name: f.name,
+    summary: f.summary,
+    keySkills: f.keySkills && cleanSkills(f.keySkills).join(','),
+    desiredRoleTypeId: f.desiredRoles && tags(f.desiredRoles),
+    newLocationPrefId: f.preferredLocations && tags(f.preferredLocations),
+    absoluteExpectedCtc: f.expectedSalary && String(f.expectedSalary.amount),
+    expectedCtcCurrency: f.expectedSalary?.currency,
+    noticePeriod: f.noticePeriodId === undefined ? undefined : { id: f.noticePeriodId },
+    ...(f.basics ? basicsProfile(f.basics) : {}),
+    ...(f.personal ? personalProfile(f.personal) : {}),
+  };
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined));
+}
+
+/** The editable fields out of GET /profile (Naukri's full profile). */
+export function parseEditable(full: any): EditableProfile {
+  const p = full?.profile?.[0] ?? {};
+  const amount = Number(p.absoluteExpectedCtc);
+  return {
+    headline: p.resumeHeadline ?? '',
+    summary: p.summary ?? '',
+    keySkills: cleanSkills(String(p.keySkills ?? '').split(',')),
+    desiredRoles: fromTags(p.desiredRole),
+    preferredLocations: fromTags(p.newLocationPrefId),
+    expectedSalary: amount > 0 ? { amount, currency: p.expectedCtcCurrency || 'INR' } : null,
+    noticePeriodId: Number(p.noticePeriod?.id) || null,
+    basics: parseBasics(full),
+    personal: parsePersonal(full),
+    ...parseSections(full),
+  };
+}
+
+/** Taxonomy suggester response → tags of the asked type (cities only for locations, not localities). */
+export function parseTaxonomy(raw: any, type: TaxonomyType): Tag[] {
+  const want = TAXONOMY_TYPES[type];
+  return (raw?.resultList?.title ?? [])
+    .filter((t: any) => t.type === want)
+    .map((t: any) => ({ id: Number([].concat(t.id)[0]), name: String([].concat(t.name)[0]) }))
+    .filter((t: Tag) => t.id > 0 && t.name);
+}
+
+/** A dropdown list's answer → its options, with the parent (a specialisation's course) when it has one. */
+export function parseOptions(raw: any, list: string): { id: number; name: string; parentId: number }[] {
+  const items = raw?.[list];
+  return Array.isArray(items)
+    ? items.map((o: any) => ({ id: Number(o.id), name: String(o.label ?? ''), parentId: Number(o.parentId) || 0 })).filter((o) => o.id > 0 && o.name)
+    : [];
 }

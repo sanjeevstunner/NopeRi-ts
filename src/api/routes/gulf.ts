@@ -5,7 +5,7 @@ import type { GulfClient } from '../../naukrigulf/index.ts';
 import { JobId, profileUpdateSchema, searchSchema, siteRoutes } from './site.ts';
 
 const Search = searchSchema(FILTER_PARAMS);
-const ProfileUpdate = profileUpdateSchema('headline', 'summary');
+const ProfileUpdate = profileUpdateSchema(['headline', 'summary']);
 const Apply = z.object({ xz: z.string().optional(), source: z.string().regex(/^\w+$/).optional() }).default({});
 const History = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),

@@ -12,11 +12,16 @@ import {
   mnjUrl,
   mnjVersion,
   parseHistory,
+  parseEditable,
+  parseOptions,
   parseHistoryDetail,
+  parseTaxonomy,
   randomFileKey,
+  toNaukriProfile,
   scriptUrls,
 } from './parsers.ts';
-import type { ApplicationDetail, ApplicationHistory, HistoryParams, ProfileFields } from './types.ts';
+import { SECTIONS, sectionBodies, type SectionName, type Sections } from './sections.ts';
+import type { ApplicationDetail, ApplicationHistory, EditableProfile, HistoryParams, ProfileFields, Tag, TaxonomyType } from './types.ts';
 
 /** Profile reads/writes: profile id, headline/name/summary, resume, application history. */
 export class NaukriProfile extends SiteService<NaukriAuth> {
@@ -34,20 +39,49 @@ export class NaukriProfile extends SiteService<NaukriAuth> {
     return (this.#profileId = String(id));
   }
 
+  /**
+   * Saves the given fields: deletes first, then the profile fields in one save, then each section's
+   * items the way Naukri's own page saves them. Stops at the first failure; what was saved before stays.
+   */
   async update(fields: ProfileFields) {
     const profileId = await this.profileId();
-    const profile = Object.fromEntries(
-      Object.entries({ resumeHeadline: fields.headline, name: fields.name, summary: fields.summary }).filter(
-        ([, v]) => v !== undefined,
-      ),
-    );
-    const res = await this.http.post(URLS.profileUpdate, {
-      headers: await this.auth.authHeaders(
-        HEADERS.profileWrite('https://www.naukri.com/mnjuser/profile?id=&altresid'),
-      ),
-      json: { profile, profileId },
+    const headers = await this.auth.authHeaders(HEADERS.profileWrite('https://www.naukri.com/mnjuser/profile?id=&altresid'));
+    const save = async (body: Record<string, unknown>) =>
+      readJson(await this.http.post(URLS.profileUpdate, { headers, json: { ...body, profileId } }), 'Profile update');
+
+    // ponytail: sequential saves, no rollback; Naukri has no transaction, and GET /profile/editable shows what took
+    for (const { section, id } of fields.remove ?? []) {
+      const res = await this.http.post(URLS.sectionItem(profileId, SECTIONS[section].remove, id), {
+        headers: { ...headers, 'x-http-method-override': 'DELETE' },
+      });
+      ensureOk(res, `Delete ${section} item`);
+    }
+    const profile = toNaukriProfile(fields);
+    const responses = Object.keys(profile).length ? [await save({ profile })] : [];
+    for (const [name, items] of Object.entries(fields.sections ?? {}) as [SectionName, Sections[SectionName]][]) {
+      for (const body of sectionBodies(name, items)) responses.push(await save(body));
+    }
+    return { profileId, saved: responses.length, removed: fields.remove?.length ?? 0 };
+  }
+
+  /** The fields `update` can change, as they are now. */
+  async editable(): Promise<EditableProfile> {
+    return parseEditable(await this.full());
+  }
+
+  /** Options of one of Naukri's dropdown lists (OPTION_LISTS). Needs no login. */
+  async options(list: string): Promise<{ id: number; name: string; parentId: number }[]> {
+    const res = await this.http.get(URLS.dropdown(list), { params: { appid: '1', lang: 'en' } });
+    return parseOptions(readJson(res, 'Dropdown options'), list);
+  }
+
+  /** Naukri's ids for a name (city, designation, company, institute, skill, certification), best match first. Needs no login. */
+  async lookup(type: TaxonomyType, q: string): Promise<Tag[]> {
+    const res = await this.http.get(URLS.taxonomy, {
+      headers: { referer: 'https://www.naukri.com/' },
+      params: { astext: q, category: type, limit: '10', appId: '105' },
     });
-    return { profileId, response: readJson(res, 'Profile update') };
+    return parseTaxonomy(readJson(res, 'Taxonomy lookup'), type);
   }
 
   /** Uploads a PDF resume: validate the file with Naukri's file service, then attach it to the profile. */
